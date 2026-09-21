@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HOURGLASS</string>
+    <string name="bedtime">Bedtime</string>
+    <string name="wake_time">Wake Time</string>
+    <string name="today_sand_timers">Today\'s Sand Timers</string>
+    <string name="quicksand">Quicksand</string>
+    <string name="no_tasks_yet">No sand timers yet</string>
+    <string name="add_a_task">Add a task</string>
+    <string name="settings">Settings</string>
+    <string name="create_sand_timer">Create Sand Timer</string>
+    <string name="task_name">Task Name</string>
+    <string name="duration">Duration</string>
+    <string name="hours">Hours</string>
+    <string name="minutes">Min</string>
+    <string name="colour">Colour</string>
+    <string name="start">Start</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="stop">Stop</string>
+    <string name="remove">Remove</string>
+    <string name="overtime">OVERTIME</string>
+    <string name="paused">PAUSED</string>
+    <string name="time_for_bed">Time for bed!</string>
+    <string name="until_bedtime">until bedtime</string>
+    <string name="get_some_rest">Get some rest</string>
+    <string name="projected_sleep">Projected Sleep</string>
+    <string name="about_hourglass">About HOURGLASS</string>
+    <string name="new_timer">New Timer</string>
+    <string name="sand_timer">Sand Timer</string>
+    <string name="quick_task_name">Quick task name</string>
+    <string name="set_a_duration">Set a duration</string>
+    <string name="please_enter_a_name">Please enter a name</string>
+    <string name="your_day_awaits">Your day awaits</string>
+    <string name="add_sand_timers_or_use_quicksand">Add sand timers or use quicksand for quick tasks</string>
+</resources>
