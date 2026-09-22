@@ -23,8 +23,12 @@ object Mat {
     const val STOCK = 13
     const val SAND_PACKED = 14
     const val PLATFORM = 15
+    const val BOULDER = 16
+    const val BOULDER_DARK = 17
 
-    const val COUNT = 16
+    const val COUNT = 18
+
+    fun isBoulder(cell: Int): Boolean = cell == BOULDER || cell == BOULDER_DARK
 
     /** How much digging a cell takes. Rock is a commitment. */
     fun hardness(cell: Int): Float = when (cell) {
@@ -68,9 +72,15 @@ class MineWorld(
     override val width: Int,
     override val height: Int,
     seed: Long,
-    /** Roughly how many loads of mineral to bury. Longer timers get richer ground. */
-    private val richness: Int = DEFAULT_RICHNESS
+    /** Loads the job calls for. Longer timers get bigger orders, not richer ground. */
+    private val quota: Int = DEFAULT_RICHNESS
 ) : World, Site {
+
+    /**
+     * Ore actually buried: always well over the order, so a short job is not a hunt
+     * for three lonely specks, and the crew never runs out before the order is met.
+     */
+    private val richness = maxOf(quota * 3 / 2, BASE_SEAMS)
 
     override val cells = IntArray(width * height)
 
@@ -89,10 +99,13 @@ class MineWorld(
     private var settleCounter = 0
 
     override val objectiveProgress: Float
-        get() = if (mineralsTotal == 0) 1f
-        else (mineralsDelivered.toFloat() / mineralsTotal).coerceAtMost(1f)
+        get() = if (order == 0) 1f
+        else (mineralsDelivered.toFloat() / order).coerceAtMost(1f)
 
-    override val objective: String get() = "$mineralsDelivered of $mineralsTotal hauled"
+    override val objective: String get() = "$mineralsDelivered of $order loads hauled"
+
+    /** The order, trimmed if the ground happened to hold less than asked. */
+    private val order: Int get() = minOf(quota, mineralsTotal)
 
     override val kind: WorldKind get() = WorldKind.MINE
 
@@ -100,6 +113,12 @@ class MineWorld(
 
     val minerCount: Int get() = crew.workers.size
     val totalSeams: Int get() = mineralsTotal
+
+    /** Loads the job calls for. */
+    val orderedLoads: Int get() = order
+
+    /** Whether the crew has seen this cell yet. */
+    fun crewKnows(index: Int): Boolean = crew.isKnown(index)
     val hauledSeams: Int get() = mineralsDelivered
 
 
@@ -144,6 +163,7 @@ class MineWorld(
         cells[cartY * width + cartX] = Mat.CART
         cells[cartY * width + cartX + 1] = Mat.CART
 
+        placeBoulders(surface)
         scatterMinerals(surface)
         spawnMiners(surface)
     }
@@ -177,35 +197,75 @@ class MineWorld(
     }
 
     /**
-     * Seams get commoner and bigger with depth, so the crew works downward and the
-     * last of the haul is genuinely expensive.
+     * Masses of bedrock nobody can dig. They sit in the sandstone and rock unseen, so a
+     * crew will tunnel straight up to one before it knows it is there — and then has
+     * to back off and find a way round.
+     */
+    private fun placeBoulders(surface: IntArray) {
+        val count = (width * height / BOULDER_AREA).coerceAtLeast(2)
+        repeat(count) {
+            val cx = generator.nextInt(2, width - 2)
+            val top = surface[cx]
+            val below = height - top
+            if (below < 16) return@repeat
+            val cy = top + (below * (0.32f + generator.nextFloat() * 0.62f)).roundToInt()
+            val rx = generator.nextInt(2, 6)
+            val ry = generator.nextInt(2, 4)
+            for (y in cy - ry..cy + ry) for (x in cx - rx..cx + rx) {
+                if (x !in 0 until width || y !in 0 until height) continue
+                val nx = (x - cx).toFloat() / rx
+                val ny = (y - cy).toFloat() / ry
+                // A lumpy ellipse rather than a clean one.
+                if (nx * nx + ny * ny > 1f + (generator.nextFloat() - 0.5f) * 0.5f) continue
+                val index = y * width + x
+                val cell = cells[index]
+                if (Mat.isOpen(cell) || cell == Mat.PLATFORM || cell == Mat.CART) continue
+                if (y <= surface[x] + PAD_DEPTH) continue
+                cells[index] = if (generator.nextFloat() < 0.35f) Mat.BOULDER_DARK else Mat.BOULDER
+            }
+        }
+    }
+
+    /**
+     * Ore comes in veins: short, wandering runs of seam rather than lone specks. That
+     * matters for the crew as much as for the look — finding a vein turns up several
+     * loads at once, so prospecting pays off in bursts the way it does underground.
+     * Veins are commoner, and longer, the deeper you go.
      */
     private fun scatterMinerals(surface: IntArray) {
         var placed = 0
         var attempts = 0
-        while (placed < richness && attempts < richness * 60) {
+        while (placed < richness && attempts < richness * 40) {
             attempts++
-            val x = generator.nextInt(2, width - 2)
+            var x = generator.nextInt(2, width - 2)
             val top = surface[x]
             val diggable = height - top
             if (diggable < 10) continue
 
             val depth = generator.nextInt(3, diggable - 1)
             val richnessAtDepth = depth.toFloat() / diggable
-            if (generator.nextFloat() > richnessAtDepth * richnessAtDepth + 0.05f) continue
+            if (generator.nextFloat() > richnessAtDepth * richnessAtDepth + 0.08f) continue
 
-            val size = 1 + generator.nextInt(if (richnessAtDepth > 0.6f) 2 else 1) + 0
-            for (dy in 0 until size) {
-                for (dx in 0 until size) {
-                    if (placed >= richness) break
-                    val px = x + dx
-                    val py = top + depth + dy
-                    if (px !in 1 until width - 1 || py !in 0 until height - 1) continue
-                    val index = py * width + px
-                    if (Mat.isOpen(cells[index]) || Mat.isMineral(cells[index])) continue
-                    if (cells[index] == Mat.CART) continue
-                    cells[index] = if (generator.nextFloat() < 0.4f) Mat.MINERAL_BRIGHT else Mat.MINERAL
-                    placed++
+            var y = top + depth
+            val length = VEIN_MIN + generator.nextInt(0, 2 + (richnessAtDepth * VEIN_EXTRA).toInt())
+            repeat(length) {
+                if (placed >= richness) return@repeat
+                if (x in 1 until width - 1 && y in 0 until height - 1) {
+                    val index = y * width + x
+                    val cell = cells[index]
+                    if (!Mat.isOpen(cell) && !Mat.isMineral(cell) && cell != Mat.CART &&
+                        cell != Mat.PLATFORM && !Mat.isBoulder(cell) && y > surface[x] + PAD_DEPTH
+                    ) {
+                        cells[index] =
+                            if (generator.nextFloat() < 0.4f) Mat.MINERAL_BRIGHT else Mat.MINERAL
+                        placed++
+                    }
+                }
+                // Wander, mostly sideways: veins run along the strata more than across.
+                when (generator.nextInt(5)) {
+                    0, 1 -> x++
+                    2, 3 -> x--
+                    else -> y += if (generator.nextBoolean()) 1 else -1
                 }
             }
         }
@@ -216,6 +276,7 @@ class MineWorld(
         val count = (width / 16).coerceIn(2, 6)
         crew = Crew(
             site = this,
+            seed = generator.nextLong(),
             spawns = List(count) { index ->
                 val x = (cartX - 2 + index * 2 - count / 2).coerceIn(1, width - 2)
                 x to (surface[x] - 1).coerceAtLeast(0)
@@ -261,6 +322,19 @@ class MineWorld(
     }
 
     override fun isQuarry(index: Int): Boolean = Mat.isMineral(cells[index])
+
+    /** The surface is plain to see; what is under it has to be found. */
+    override fun startsKnown(index: Int): Boolean =
+        cells[index] == Mat.SKY || cells[index] == Mat.PLATFORM || cells[index] == Mat.CART
+
+    /**
+     * Prospectors head down: seams get richer with depth, and everybody in the crew
+     * knows it. Open sky is not worth prospecting.
+     */
+    override fun prospect(x: Int, y: Int): Float {
+        if (Mat.isOpen(cells[y * width + x])) return 0f
+        return 0.3f + 1.5f * y / height
+    }
 
     override fun isDropOff(x: Int, y: Int): Boolean =
         x in (cartX - 2)..(cartX + 3) && abs(y - cartY) <= 1
@@ -437,6 +511,13 @@ class MineWorld(
         /** Platform width to the right of the cart. */
         private const val PLATFORM_WIDTH = 8
 
+        /** Cells in the shortest vein, and how many more the deepest ones get. */
+        private const val VEIN_MIN = 3
+        private const val VEIN_EXTRA = 5
+
+        /** One boulder per this many cells of frame. */
+        private const val BOULDER_AREA = 520
+
         /** Rows of sandstone under the cart. */
         private const val PAD_DEPTH = 3
 
@@ -456,8 +537,20 @@ class MineWorld(
          * ground in the frame.
          */
         fun richnessFor(durationMinutes: Float): Int =
-            (durationMinutes * LOADS_PER_MINUTE).roundToInt().coerceIn(24, 240)
+            (durationMinutes * LOADS_PER_MINUTE).roundToInt().coerceIn(8, 200)
 
-        private const val LOADS_PER_MINUTE = 6f
+        /**
+         * Ore buried however short the job. Ground with less than this reads as barren
+         * and, worse, is slow to prospect: a crew finds ore by stumbling into it, and a
+         * sparse seam is mostly missed — the haul rate falls several-fold.
+         */
+        private const val BASE_SEAMS = 160
+
+        /**
+         * Measured, not chosen: a prospecting crew on a 72×96 world at an ordinary
+         * effort hauls about three loads a minute. Sizing the job just under that
+         * keeps the crew at its natural pace rather than hurried or idle.
+         */
+        private const val LOADS_PER_MINUTE = 2.5f
     }
 }

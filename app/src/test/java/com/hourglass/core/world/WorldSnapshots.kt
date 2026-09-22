@@ -28,7 +28,7 @@ class WorldSnapshots {
     fun mine() {
         val dir = outputDir()
         listOf(3L, 11L, 21L).forEach { seed ->
-            render(MineWorld(72, 96, seed, richness = 60), "mine-$seed", dir, MINE_PALETTE, Mat.SKY, MINE_EXEMPT)
+            render(MineWorld(72, 96, seed, quota = 60), "mine-$seed", dir)
         }
     }
 
@@ -36,19 +36,14 @@ class WorldSnapshots {
     fun river() {
         val dir = outputDir()
         listOf(3L, 11L).forEach { seed ->
-            render(RiverWorld(72, 96, seed, richness = 150), "river-$seed", dir, RIVER_PALETTE, RiverMat.SKY, RIVER_EXEMPT)
+            render(RiverWorld(72, 96, seed, richness = 150), "river-$seed", dir)
         }
     }
 
     /** Runs a five-minute timer and writes the world at checkpoints through it. */
-    private fun render(
-        world: World,
-        name: String,
-        dir: File,
-        palette: IntArray,
-        sky: Int,
-        exempt: Set<Int>
-    ) {
+    private fun render(world: World, name: String, dir: File) {
+        val palette = Palettes.forKind(world.kind, AMBER)
+        val shaded = Palettes.shadedByDepth(palette, world.height)
         val pacer = WorldPacer()
         val random = Random(name.hashCode().toLong())
         val ticks = 9000
@@ -57,7 +52,7 @@ class WorldSnapshots {
         for (tick in 0..12000) {
             checkpoints[tick]?.let { label ->
                 world.renderInto(buffer)
-                write(buffer, world.width, world.height, File(dir, "$name-$label.png"), palette, sky, exempt)
+                write(buffer, world.width, world.height, File(dir, "$name-$label.png"), shaded, palette.sky, palette.colours.size)
             }
             world.step(pacer.effortFor((tick + 1f) / ticks, world.objectiveProgress), random)
         }
@@ -68,9 +63,9 @@ class WorldSnapshots {
         width: Int,
         height: Int,
         file: File,
-        palette: IntArray,
+        shaded: IntArray,
         skySlot: Int,
-        exempt: Set<Int>
+        slots: Int
     ) {
         val scale = 6
         val w = width * scale
@@ -80,11 +75,7 @@ class WorldSnapshots {
             val sky = lerpArgb(0xFF3B3E6E.toInt(), 0xFFE7C58F.toInt(), y / (height * 0.25f))
             for (x in 0 until width) {
                 val slot = cells[y * width + x]
-                val argb = when {
-                    slot == skySlot -> sky
-                    slot in exempt -> palette[slot]
-                    else -> lerpArgb(palette[slot], 0xFF000000.toInt(), DEPTH_DARKENING * y / height)
-                }
+                val argb = if (slot == skySlot) sky else shaded[y * slots + slot]
                 for (dy in 0 until scale) for (dx in 0 until scale) {
                     pixels[(y * scale + dy) * w + x * scale + dx] = argb
                 }
@@ -143,46 +134,6 @@ class WorldSnapshots {
     }
 
     private companion object {
-        const val DEPTH_DARKENING = 0.4f
-
-        val MINE_EXEMPT = setOf(Mat.MINER, Mat.MINER_LOADED, Mat.MINERAL, Mat.MINERAL_BRIGHT)
-        val RIVER_EXEMPT = setOf(RiverMat.BEAVER, RiverMat.BEAVER_LOADED, RiverMat.WATER, RiverMat.WATER_SURFACE)
-
-        /** Mirrors the app's river palette. */
-        val RIVER_PALETTE = IntArray(RiverMat.COUNT).also {
-            it[RiverMat.AIR] = 0xFF1B130D.toInt()
-            it[RiverMat.EARTH] = 0xFF8A6A48.toInt()
-            it[RiverMat.EARTH_DARK] = 0xFF735638.toInt()
-            it[RiverMat.ROCK] = 0xFF5A4E46.toInt()
-            it[RiverMat.WATER] = 0xFF3F86B8.toInt()
-            it[RiverMat.LOG] = 0xFF7B5433.toInt()
-            it[RiverMat.LOG_DARK] = 0xFF5E3F25.toInt()
-            it[RiverMat.STICK] = 0xFFA07C52.toInt()
-            it[RiverMat.MUD] = 0xFF4E3B2A.toInt()
-            it[RiverMat.GRASS_DRY] = 0xFFB59A5E.toInt()
-            it[RiverMat.GRASS] = 0xFF5E9A3E.toInt()
-            it[RiverMat.WATER_SURFACE] = 0xFF7FB6DA.toInt()
-            it[RiverMat.BEAVER] = 0xFF3A2414.toInt()
-            it[RiverMat.BEAVER_LOADED] = 0xFFC49A62.toInt()
-        }
-
-        /** Mirrors the app's mine palette, with amber seams. */
-        val MINE_PALETTE = IntArray(Mat.COUNT).also {
-            it[Mat.AIR] = 0xFF1B130D.toInt()
-            it[Mat.SAND] = 0xFFD8B77C.toInt()
-            it[Mat.SAND_DARK] = 0xFFC7A366.toInt()
-            it[Mat.SANDSTONE] = 0xFFAE7849.toInt()
-            it[Mat.SANDSTONE_DARK] = 0xFF98683E.toInt()
-            it[Mat.ROCK] = 0xFF5C4F47.toInt()
-            it[Mat.ROCK_DARK] = 0xFF4B403A.toInt()
-            it[Mat.MINERAL] = 0xFFD9A949.toInt()
-            it[Mat.MINERAL_BRIGHT] = 0xFFF0D596.toInt()
-            it[Mat.CART] = 0xFF6E4B2E.toInt()
-            it[Mat.MINER] = 0xFFF6EBD6.toInt()
-            it[Mat.MINER_LOADED] = 0xFFE9C37A.toInt()
-            it[Mat.STOCK] = 0xFFE0B458.toInt()
-            it[Mat.SAND_PACKED] = 0xFFB89A68.toInt()
-            it[Mat.PLATFORM] = 0xFF7A5634.toInt()
-        }
+        const val AMBER = 0xFFD9A949.toInt()
     }
 }

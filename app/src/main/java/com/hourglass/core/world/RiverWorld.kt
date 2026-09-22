@@ -96,7 +96,7 @@ class RiverWorld(
 
     override val kind: WorldKind get() = WorldKind.RIVER
 
-    override val focusY: Float get() = 0.62f
+    override val focusY: Float get() = 0.55f
 
     val waterCount: Int get() = cells.count { it == RiverMat.WATER }
     val beaverCount: Int get() = crew.workers.size
@@ -153,6 +153,7 @@ class RiverWorld(
         // The crew comes out of the woods at the right-hand edge.
         crew = Crew(
             site = this,
+            seed = generator.nextLong(),
             spawns = List((width / 20).coerceIn(2, 5)) { index ->
                 val x = (width - 2 - index * 2).coerceIn(damRight + 1, width - 1)
                 x to surface[x] - 1
@@ -360,6 +361,9 @@ class RiverWorld(
     /** Off into the woods beyond the right-hand edge. */
     override fun isDropOff(x: Int, y: Int): Boolean = x >= width - 2
 
+    /** A jam stands in the open: the beavers can see all of it. */
+    override fun startsKnown(index: Int): Boolean = true
+
     override fun work(index: Int, random: Random): Boolean {
         val cell = cells[index]
         damage[index] += GNAW_POWER
@@ -407,10 +411,10 @@ class RiverWorld(
     }
 
     private companion object {
-        const val BED_FRACTION = 0.72f
-        const val DAM_TOP_FRACTION = 0.42f
+        const val BED_FRACTION = 0.64f
+        const val DAM_TOP_FRACTION = 0.34f
         const val DAM_LEFT_FRACTION = 0.38f
-        const val DOWNSTREAM_DROP = 0.12f
+        const val DOWNSTREAM_DROP = 0.16f
         /** Rows between the lake's surface and the top of the jam. */
         const val LAKE_FREEBOARD = 2
 

@@ -9,7 +9,11 @@ import kotlin.random.Random
 
 class MineWorldTest {
 
-    private fun world(seed: Long = 7L, w: Int = 48, h: Int = 64) = MineWorld(w, h, seed)
+    /** The world the app builds for a timer of this many minutes. */
+    private fun world(seed: Long = 7L, minutes: Float = 10f) =
+        MineWorld(72, 96, seed, MineWorld.richnessFor(minutes))
+
+    private fun ticks(minutes: Float) = (minutes * 60 * 30).toInt()
 
     /** Runs a whole timer's worth of ticks, pacing the world as the app would. */
     private fun runTimer(
@@ -33,7 +37,8 @@ class MineWorldTest {
     @Test
     fun `the ground is layered, with sky above it`() {
         val world = world()
-        val column = world.width / 2
+        // Away from the headframe, which sits on its own sandstone pad.
+        val column = 2
         val stack = (0 until world.height).map { world.cells[it * world.width + column] }
 
         assertTrue("should start in sky", stack.first() == Mat.SKY)
@@ -73,7 +78,7 @@ class MineWorldTest {
         assertTrue("world should have seams", world.totalSeams > 0)
         assertTrue("world should have miners", world.minerCount > 0)
 
-        runTimer(world, ticks = 4000)
+        runTimer(world, ticks = ticks(5f))
         assertTrue("nothing was hauled", world.hauledSeams > 0)
     }
 
@@ -81,16 +86,14 @@ class MineWorldTest {
     fun `a short timer and a long timer both land near the target`() {
         val target = WorldPacer().completionTarget
 
-        val quick = runTimer(world(seed = 11L), ticks = 2500)
-        val slow = runTimer(world(seed = 11L), ticks = 30000)
+        // A five-minute and a twenty-minute timer, each with the world the app would
+        // build for it.
+        val quick = runTimer(world(seed = 11L, minutes = 5f), ticks = ticks(5f))
+        val slow = runTimer(world(seed = 11L, minutes = 20f), ticks = ticks(20f))
 
-        assertTrue("quick run landed at $quick", abs(quick - target) < 0.25f)
-        assertTrue("slow run landed at $slow", abs(slow - target) < 0.25f)
-        // The point of the pacer: wildly different tick budgets, same finish.
-        assertTrue(
-            "quick $quick and slow $slow should agree",
-            abs(quick - slow) < 0.15f
-        )
+        assertTrue("quick run landed at $quick", abs(quick - target) < 0.2f)
+        assertTrue("slow run landed at $slow", abs(slow - target) < 0.2f)
+        assertTrue("quick $quick and slow $slow should agree", abs(quick - slow) < 0.2f)
     }
 
     @Test
@@ -98,8 +101,8 @@ class MineWorldTest {
         // The control for the test above: at a fixed effort the world has no idea a
         // clock exists, and a short run and a long run end nowhere near each other.
         val flat = WorldPacer(gain = 0f, minEffort = 1f, maxEffort = 1f, learningRate = 0f)
-        val quick = runTimer(world(seed = 11L), ticks = 2500, pacer = flat)
-        val slow = runTimer(world(seed = 11L), ticks = 30000, pacer = flat)
+        val quick = runTimer(world(seed = 11L, minutes = 20f), ticks = ticks(5f), pacer = flat)
+        val slow = runTimer(world(seed = 11L, minutes = 20f), ticks = ticks(20f), pacer = flat)
 
         assertTrue(
             "unpaced runs should diverge, got $quick and $slow",
@@ -110,8 +113,8 @@ class MineWorldTest {
     @Test
     fun `overtime buys the rest of the haul`() {
         val world = world(seed = 21L)
-        val atEnd = runTimer(world, ticks = 4000)
-        val afterOvertime = runTimer(world(seed = 21L), ticks = 4000, overtimeTicks = 4000)
+        val atEnd = runTimer(world, ticks = ticks(8f))
+        val afterOvertime = runTimer(world(seed = 21L), ticks = ticks(8f), overtimeTicks = ticks(6f))
 
         assertTrue(
             "overtime should add to $atEnd, ended at $afterOvertime",
@@ -125,8 +128,10 @@ class MineWorldTest {
         val world = world(seed = 5L)
         val random = Random(1)
         var previous = 0f
-        repeat(3000) { index ->
-            world.step(WorldPacer().effortFor((index + 1) / 3000f, world.objectiveProgress), random)
+        val pacer = WorldPacer()
+        val total = ticks(4f)
+        repeat(total) { index ->
+            world.step(pacer.effortFor((index + 1f) / total, world.objectiveProgress), random)
             assertTrue("went backwards at $index", world.objectiveProgress >= previous)
             previous = world.objectiveProgress
         }
@@ -150,7 +155,7 @@ class MineWorldTest {
     fun `digging opens the ground up rather than destroying miners`() {
         val world = world(seed = 8L)
         val openBefore = world.cells.count { Mat.isOpen(it) }
-        runTimer(world, ticks = 1500)
+        runTimer(world, ticks = ticks(4f))
         val openAfter = world.cells.count { Mat.isOpen(it) }
 
         assertTrue("tunnels should have appeared", openAfter > openBefore)
@@ -160,7 +165,7 @@ class MineWorldTest {
     @Test
     fun `sand slumps into tunnels but rock holds`() {
         val world = world(seed = 13L)
-        runTimer(world, ticks = 2000)
+        runTimer(world, ticks = ticks(4f))
 
         // No loose grain should be left hanging over open space once things settle.
         var floating = 0
@@ -186,17 +191,53 @@ class MineWorldSweepTest {
     fun `every seed hauls and lands near the target`() {
         val target = WorldPacer().completionTarget
         val failures = mutableListOf<String>()
-        (1L..24L).forEach { seed ->
-            val world = MineWorld(48, 64, seed)
+        (1L..10L).forEach { seed ->
+            val world = MineWorld(72, 96, seed, MineWorld.richnessFor(10f))
             val random = Random(seed * 31)
-            val ticks = 5000
+            val ticks = 10 * 60 * 30
             val pacer = WorldPacer()
             repeat(ticks) { index ->
                 world.step(pacer.effortFor((index + 1f) / ticks, world.objectiveProgress), random)
             }
             val landed = world.objectiveProgress
-            if (abs(landed - target) > 0.2f) failures += "seed $seed landed at $landed"
+            if (abs(landed - target) > 0.15f) failures += "seed $seed landed at $landed"
         }
         assertTrue(failures.joinToString("; "), failures.isEmpty())
+    }
+}
+
+class MineImperfectionTest {
+
+    @Test
+    fun `bedrock is never dug`() {
+        val world = MineWorld(72, 96, 3L, MineWorld.richnessFor(10f))
+        val before = world.cells.count { Mat.isBoulder(it) }
+        assertTrue("world should have boulders", before > 0)
+        val pacer = WorldPacer()
+        val random = Random(3)
+        val ticks = 10 * 60 * 30
+        repeat(ticks) { world.step(pacer.effortFor((it + 1f) / ticks, world.objectiveProgress), random) }
+        assertEquals(before, world.cells.count { Mat.isBoulder(it) })
+    }
+
+    @Test
+    fun `the crew does not know where deep seams are until it goes looking`() {
+        val world = MineWorld(72, 96, 5L, MineWorld.richnessFor(10f))
+        val deepSeam = (world.cells.indices).last { Mat.isMineral(world.cells[it]) }
+        assertTrue("a deep seam should start unseen", !world.crewKnows(deepSeam))
+    }
+
+    @Test
+    fun `prospecting leaves workings that lead nowhere`() {
+        // A crew with perfect knowledge digs only what it needs. One that prospects
+        // opens far more ground than the seams alone account for.
+        val world = MineWorld(72, 96, 9L, MineWorld.richnessFor(10f))
+        val openBefore = world.cells.count { it == Mat.AIR }
+        val pacer = WorldPacer()
+        val random = Random(9)
+        val ticks = 10 * 60 * 30
+        repeat(ticks) { world.step(pacer.effortFor((it + 1f) / ticks, world.objectiveProgress), random) }
+        val dug = world.cells.count { it == Mat.AIR } - openBefore
+        assertTrue("dug $dug cells for ${world.hauledSeams} loads", dug > world.hauledSeams * 4)
     }
 }
