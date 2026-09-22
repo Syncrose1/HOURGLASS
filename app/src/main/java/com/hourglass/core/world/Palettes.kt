@@ -24,7 +24,46 @@ object Palettes {
         WorldKind.RIVER -> river(accent)
         WorldKind.ANTS -> ants(accent)
         WorldKind.ISLAND -> island(accent)
+        WorldKind.FOREST -> forest(accent)
     }
+
+    /**
+     * A clearing in late light. The crew wear the timer's colour, so the people doing
+     * the work are visibly this timer's crew.
+     */
+    private fun forest(accent: Int) = WorldPalette(
+        colours = IntArray(ForestMat.COUNT).also {
+            it[ForestMat.SKY] = TRANSPARENT
+            it[ForestMat.GRASS] = 0xFF6E8F3E.toInt()
+            it[ForestMat.DIRT] = 0xFF6B4E33.toInt()
+            it[ForestMat.DIRT_DARK] = 0xFF5B412A.toInt()
+            it[ForestMat.TRUNK] = 0xFF7A5436.toInt()
+            it[ForestMat.TRUNK_DARK] = 0xFF5C3E27.toInt()
+            it[ForestMat.LEAF] = 0xFF4F8A3C.toInt()
+            it[ForestMat.LEAF_DARK] = 0xFF3B6D30.toInt()
+            it[ForestMat.LEAF_LIGHT] = 0xFF78A94C.toInt()
+            it[ForestMat.PINE] = 0xFF2F5E3B.toInt()
+            it[ForestMat.PINE_DARK] = 0xFF224A2F.toInt()
+            it[ForestMat.STUMP] = 0xFFD2B07A.toInt()
+            it[ForestMat.LOG_END] = 0xFFD9B98A.toInt()
+            it[ForestMat.LOG_END_DARK] = 0xFFB18E5E.toInt()
+            it[ForestMat.BRUSH] = 0xFF6B6A34.toInt()
+            it[ForestMat.FIRE] = 0xFFE8702A.toInt()
+            it[ForestMat.FIRE_HOT] = 0xFFFFD166.toInt()
+            it[ForestMat.SMOKE] = 0xFFB9B4AE.toInt()
+            it[ForestMat.CHIP] = 0xFFE3C99A.toInt()
+            it[ForestMat.SKIN] = 0xFFF1C9A0.toInt()
+            it[ForestMat.SHIRT] = accent
+            it[ForestMat.TROUSERS] = 0xFF2F3A4F.toInt()
+            it[ForestMat.TOOL] = 0xFFD9DDE2.toInt()
+        },
+        bright = setOf(
+            ForestMat.SKY, ForestMat.FIRE, ForestMat.FIRE_HOT, ForestMat.SKIN,
+            ForestMat.SHIRT, ForestMat.TOOL, ForestMat.SMOKE
+        ),
+        sky = ForestMat.SKY,
+        depthShading = 0.15f
+    )
 
     /**
      * Open sea under open sky. The timer's colour runs through the lava's glow, so the

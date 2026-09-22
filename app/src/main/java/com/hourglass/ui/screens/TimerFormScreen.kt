@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -415,48 +416,79 @@ private fun WorldSelector(
 ) {
     val colors = HourglassTheme.colors
     val onAccent = if (accent.luminance() > 0.55f) colors.textPrimary else Color.White
-    Row(
+    // Rows of three: there are more worlds than fit on one line.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(24.dp))
             .background(colors.surfaceMuted)
             .padding(Spacing.xs),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
     ) {
-        WorldKind.entries.forEach { option ->
-            val isSelected = option == selected
-            val background by animateColorAsState(
-                targetValue = if (isSelected) accent else Color.Transparent,
-                animationSpec = tween(durationMillis = 220),
-                label = "world_background"
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(CircleShape)
-                    .background(background)
-                    .selectable(
-                        selected = isSelected,
-                        role = Role.RadioButton,
-                        onClick = { onSelect(option) }
-                    )
-                    .padding(vertical = Spacing.md),
-                contentAlignment = Alignment.Center
+        WorldKind.entries.chunked(WORLDS_PER_ROW).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
-                Text(
-                    text = stringResource(
-                        when (option) {
-                            WorldKind.MINE -> R.string.world_mine
-                            WorldKind.RIVER -> R.string.world_river
-                            WorldKind.ANTS -> R.string.world_ants
-                            WorldKind.ISLAND -> R.string.world_island
-                        }
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) onAccent else colors.textSecondary
-                )
+                row.forEach { option ->
+                    WorldPill(
+                        option = option,
+                        isSelected = option == selected,
+                        accent = accent,
+                        onAccent = onAccent,
+                        onSelect = onSelect,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // Keep a short last row's pills the same width as the rest.
+                repeat(WORLDS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+    }
+}
+
+private const val WORLDS_PER_ROW = 3
+
+@Composable
+private fun WorldPill(
+    option: WorldKind,
+    isSelected: Boolean,
+    accent: Color,
+    onAccent: Color,
+    onSelect: (WorldKind) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = HourglassTheme.colors
+    val background by animateColorAsState(
+        targetValue = if (isSelected) accent else Color.Transparent,
+        animationSpec = tween(durationMillis = 220),
+        label = "world_background"
+    )
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(background)
+            .selectable(
+                selected = isSelected,
+                role = Role.RadioButton,
+                onClick = { onSelect(option) }
+            )
+            .padding(vertical = Spacing.md),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(
+                when (option) {
+                    WorldKind.MINE -> R.string.world_mine
+                    WorldKind.RIVER -> R.string.world_river
+                    WorldKind.ANTS -> R.string.world_ants
+                    WorldKind.ISLAND -> R.string.world_island
+                    WorldKind.FOREST -> R.string.world_forest
+                }
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isSelected) onAccent else colors.textSecondary
+        )
     }
 }
 

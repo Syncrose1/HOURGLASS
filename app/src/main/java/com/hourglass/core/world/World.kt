@@ -15,7 +15,10 @@ enum class WorldKind {
     ANTS,
 
     /** An undersea volcano builds an island, flow by flow. */
-    ISLAND;
+    ISLAND,
+
+    /** A lumber crew fells a stand of trees and stacks the timber. */
+    FOREST;
 
     /** The value persisted with a timer. */
     val token: String get() = name.lowercase()

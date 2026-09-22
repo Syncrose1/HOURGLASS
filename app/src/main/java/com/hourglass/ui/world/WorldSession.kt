@@ -2,6 +2,7 @@ package com.hourglass.ui.world
 
 import com.hourglass.core.TimerRef
 import com.hourglass.core.world.AntWorld
+import com.hourglass.core.world.ForestWorld
 import com.hourglass.core.world.IslandWorld
 import com.hourglass.core.world.MineWorld
 import com.hourglass.core.world.RiverWorld
@@ -99,6 +100,7 @@ object WorldRegistry {
             WorldKind.RIVER -> RiverWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, richness * RIVER_SCALE)
             WorldKind.ANTS -> AntWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, AntWorld.quotaFor(minutes))
             WorldKind.ISLAND -> IslandWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, IslandWorld.quotaFor(minutes))
+            WorldKind.FOREST -> ForestWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, ForestWorld.quotaFor(minutes))
         }
         return WorldSession(world)
     }
