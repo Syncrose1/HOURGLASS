@@ -23,7 +23,36 @@ object Palettes {
         WorldKind.MINE -> mine(accent)
         WorldKind.RIVER -> river(accent)
         WorldKind.ANTS -> ants(accent)
+        WorldKind.ISLAND -> island(accent)
     }
+
+    /**
+     * Open sea under open sky. The timer's colour runs through the lava's glow, so the
+     * eruption building the island is visibly this timer's.
+     */
+    private fun island(accent: Int) = WorldPalette(
+        colours = IntArray(IslandMat.COUNT).also {
+            it[IslandMat.SKY] = TRANSPARENT
+            it[IslandMat.WATER] = 0xFF2F6F99.toInt()
+            it[IslandMat.WATER_SURFACE] = 0xFF7DB8D8.toInt()
+            it[IslandMat.SEABED] = 0xFF4A4038.toInt()
+            it[IslandMat.SEABED_SAND] = 0xFFB59C6E.toInt()
+            it[IslandMat.LAVA_HOT] = mix(0xFFFFD66B.toInt(), accent, 0.3f)
+            it[IslandMat.LAVA] = mix(0xFFF07A2A.toInt(), accent, 0.2f)
+            it[IslandMat.LAVA_COOL] = 0xFFA2361E.toInt()
+            it[IslandMat.BASALT] = 0xFF3A3533.toInt()
+            it[IslandMat.BASALT_DARK] = 0xFF2C2827.toInt()
+            it[IslandMat.ASH] = 0xFF7B7068.toInt()
+            it[IslandMat.STEAM] = 0xFFE8ECEF.toInt()
+            it[IslandMat.GRASS] = 0xFF6FA045.toInt()
+            it[IslandMat.SHRUB] = 0xFF3F7A3A.toInt()
+        },
+        bright = setOf(
+            IslandMat.SKY, IslandMat.LAVA_HOT, IslandMat.LAVA, IslandMat.STEAM,
+            IslandMat.WATER_SURFACE, IslandMat.GRASS, IslandMat.SHRUB
+        ),
+        sky = IslandMat.SKY
+    )
 
     /**
      * Dry ground at midday, seen from above. The food is the timer's colour, and so is

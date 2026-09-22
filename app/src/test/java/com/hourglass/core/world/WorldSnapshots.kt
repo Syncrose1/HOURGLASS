@@ -48,6 +48,14 @@ class WorldSnapshots {
         }
     }
 
+    @Test
+    fun island() {
+        val dir = outputDir()
+        listOf(3L, 11L).forEach { seed ->
+            render(IslandWorld(72, 96, seed, IslandWorld.quotaFor(5f)), "island-$seed", dir)
+        }
+    }
+
     /** Runs a five-minute timer and writes the world at checkpoints through it. */
     private fun render(world: World, name: String, dir: File) {
         val palette = Palettes.forKind(world.kind, AMBER)

@@ -12,7 +12,10 @@ enum class WorldKind {
     RIVER,
 
     /** A colony forages a patch of ground from above, trails and all. */
-    ANTS;
+    ANTS,
+
+    /** An undersea volcano builds an island, flow by flow. */
+    ISLAND;
 
     /** The value persisted with a timer. */
     val token: String get() = name.lowercase()

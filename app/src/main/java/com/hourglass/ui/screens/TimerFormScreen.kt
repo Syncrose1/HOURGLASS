@@ -449,6 +449,7 @@ private fun WorldSelector(
                             WorldKind.MINE -> R.string.world_mine
                             WorldKind.RIVER -> R.string.world_river
                             WorldKind.ANTS -> R.string.world_ants
+                            WorldKind.ISLAND -> R.string.world_island
                         }
                     ),
                     style = MaterialTheme.typography.labelLarge,
