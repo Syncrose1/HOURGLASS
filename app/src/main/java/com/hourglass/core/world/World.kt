@@ -1,5 +1,6 @@
 package com.hourglass.core.world
 
+import kotlin.math.exp
 import kotlin.random.Random
 
 /**
@@ -52,9 +53,22 @@ class WorldPacer(
     val completionTarget: Float = DEFAULT_COMPLETION_TARGET,
     /** How hard the pacer corrects. Higher is twitchier. */
     private val gain: Float = 5f,
-    private val minEffort: Float = 0.05f,
-    private val maxEffort: Float = 8f
+    private val minEffort: Float = 0.005f,
+    private val maxEffort: Float = 8f,
+    /** How quickly the baseline effort learns the pace this world actually needs. */
+    private val learningRate: Float = 0.02f
 ) {
+
+    /**
+     * The effort that keeps this world on the clock, learned as it runs.
+     *
+     * A purely proportional pacer centred on an effort of 1 has a steady-state error:
+     * for a long timer, "working normally" is far too fast, so the world settles
+     * permanently ahead of the clock by exactly the margin it takes to slow it down —
+     * and a two-hour mine finished at 100% instead of 85%. The baseline integrates the
+     * error so that, once settled, the world tracks the clock with no offset at all.
+     */
+    private var baseline = 1f.coerceIn(minEffort, maxEffort)
 
     /**
      * Where the objective ought to be at [timerProgress], which runs past 1 into
@@ -69,10 +83,16 @@ class WorldPacer(
         return completionTarget + remaining * (1f - Math.exp(-(overtime * OVERTIME_RATE).toDouble()).toFloat())
     }
 
-    /** How hard the world should work this tick. */
+    /**
+     * How hard the world should work this tick. Call once per tick: the pacer learns
+     * from each call.
+     */
     fun effortFor(timerProgress: Float, objectiveProgress: Float): Float {
         val error = desiredProgress(timerProgress) - objectiveProgress
-        return (1f + gain * error).coerceIn(minEffort, maxEffort)
+        // Integral in log space, so the baseline scales rather than shifts: halving an
+        // effort of 0.02 and halving an effort of 4 are the same kind of correction.
+        baseline = (baseline * exp(learningRate * error)).coerceIn(minEffort, maxEffort)
+        return (baseline * exp(gain * error)).coerceIn(minEffort, maxEffort)
     }
 
     companion object {

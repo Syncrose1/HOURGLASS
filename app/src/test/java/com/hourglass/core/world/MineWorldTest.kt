@@ -82,14 +82,14 @@ class MineWorldTest {
         val target = WorldPacer().completionTarget
 
         val quick = runTimer(world(seed = 11L), ticks = 2500)
-        val slow = runTimer(world(seed = 11L), ticks = 12000)
+        val slow = runTimer(world(seed = 11L), ticks = 30000)
 
         assertTrue("quick run landed at $quick", abs(quick - target) < 0.25f)
         assertTrue("slow run landed at $slow", abs(slow - target) < 0.25f)
         // The point of the pacer: wildly different tick budgets, same finish.
         assertTrue(
             "quick $quick and slow $slow should agree",
-            abs(quick - slow) < 0.25f
+            abs(quick - slow) < 0.15f
         )
     }
 
@@ -97,9 +97,9 @@ class MineWorldTest {
     fun `without pacing the finish depends entirely on how long you waited`() {
         // The control for the test above: at a fixed effort the world has no idea a
         // clock exists, and a short run and a long run end nowhere near each other.
-        val flat = WorldPacer(gain = 0f, minEffort = 1f, maxEffort = 1f)
+        val flat = WorldPacer(gain = 0f, minEffort = 1f, maxEffort = 1f, learningRate = 0f)
         val quick = runTimer(world(seed = 11L), ticks = 2500, pacer = flat)
-        val slow = runTimer(world(seed = 11L), ticks = 12000, pacer = flat)
+        val slow = runTimer(world(seed = 11L), ticks = 30000, pacer = flat)
 
         assertTrue(
             "unpaced runs should diverge, got $quick and $slow",

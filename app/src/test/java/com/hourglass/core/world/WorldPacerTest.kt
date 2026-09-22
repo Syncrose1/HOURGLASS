@@ -63,8 +63,28 @@ class WorldPacerTest {
             -1f to 2f
         ).forEach { (timer, objective) ->
             val effort = pacer.effortFor(timer, objective)
-            assertTrue("effort $effort out of range for $timer/$objective", effort in 0.05f..8f)
+            assertTrue("effort $effort out of range for $timer/$objective", effort in 0.005f..8f)
         }
+    }
+
+    @Test
+    fun `a world that keeps running ahead learns to slow down`() {
+        // Proportional-only pacing settled ahead of the clock forever. The baseline
+        // has to keep falling while the world stays ahead.
+        val pacer = WorldPacer()
+        val first = pacer.effortFor(timerProgress = 0.3f, objectiveProgress = 0.4f)
+        repeat(500) { pacer.effortFor(timerProgress = 0.3f, objectiveProgress = 0.4f) }
+        val later = pacer.effortFor(timerProgress = 0.3f, objectiveProgress = 0.4f)
+        assertTrue("effort should keep falling: $first then $later", later < first * 0.5f)
+    }
+
+    @Test
+    fun `a world that keeps falling behind learns to push`() {
+        val pacer = WorldPacer()
+        val first = pacer.effortFor(timerProgress = 0.4f, objectiveProgress = 0.2f)
+        repeat(500) { pacer.effortFor(timerProgress = 0.4f, objectiveProgress = 0.2f) }
+        val later = pacer.effortFor(timerProgress = 0.4f, objectiveProgress = 0.2f)
+        assertTrue("effort should keep rising: $first then $later", later > first * 1.5f)
     }
 
     @Test

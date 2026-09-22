@@ -54,7 +54,7 @@ fun WorldView(
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val cells = remember(world) { IntArray(world.width * world.height) }
     val pixels = remember(world) { IntArray(world.width * world.height) }
-    val palette = remember(mineral, colors.isDark) { minePalette(mineral) }
+    val palette = remember(mineral, colors.isDark, world) { shadedByDepth(minePalette(mineral), world.height) }
 
     val skyTop = lerp(colors.duskTop, colors.backdropTop, if (colors.isDark) 0.15f else 0.55f)
     val skyBottom = lerp(colors.accentSoft, colors.backdropTop, if (colors.isDark) 0.1f else 0.35f)
@@ -78,7 +78,9 @@ fun WorldView(
         frame
 
         world.renderInto(cells)
-        for (index in cells.indices) pixels[index] = palette[cells[index]]
+        for (index in cells.indices) {
+            pixels[index] = palette[(index / world.width) * Mat.COUNT + cells[index]]
+        }
         bitmap.setPixels(pixels, 0, world.width, 0, 0, world.width, world.height)
 
         drawRect(Brush.verticalGradient(listOf(skyTop, skyBottom)))
@@ -123,8 +125,31 @@ private fun minePalette(mineral: Color): IntArray {
     set(Mat.MINER, Color(0xFFF6EBD6))
     set(Mat.MINER_LOADED, lerp(mineral, Color.White, 0.25f))
     set(Mat.STOCK, lerp(mineral, Color.White, 0.15f))
+    set(Mat.SAND_PACKED, Color(0xFFB89A68))
+    set(Mat.PLATFORM, Color(0xFF7A5634))
     return slots
 }
+
+/**
+ * One palette per row, darkening toward the bottom, so the ground reads as depth
+ * rather than as flat bands. Miners and seams are exempt: they are what you look for.
+ */
+private fun shadedByDepth(palette: IntArray, height: Int): IntArray {
+    val table = IntArray(height * Mat.COUNT)
+    for (y in 0 until height) {
+        val darkening = DEPTH_DARKENING * y / height
+        for (slot in 0 until Mat.COUNT) {
+            val base = Color(palette[slot])
+            val exempt = slot == Mat.SKY || slot == Mat.MINER || slot == Mat.MINER_LOADED ||
+                Mat.isMineral(slot)
+            table[y * Mat.COUNT + slot] =
+                if (exempt) palette[slot] else lerp(base, Color.Black, darkening).toArgb()
+        }
+    }
+    return table
+}
+
+private const val DEPTH_DARKENING = 0.4f
 
 /** About thirty steps a second: brisk enough to watch, calm enough not to fizz. */
 private const val STEP_INTERVAL_MILLIS = 33L

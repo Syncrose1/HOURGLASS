@@ -22,12 +22,15 @@ object Mat {
     const val MINER = 11
     const val MINER_LOADED = 12
     const val STOCK = 13
+    const val SAND_PACKED = 14
+    const val PLATFORM = 15
 
-    const val COUNT = 14
+    const val COUNT = 16
 
     /** How much digging a cell takes. Rock is a commitment. */
     fun hardness(cell: Int): Float = when (cell) {
         SAND, SAND_DARK -> 1.2f
+        SAND_PACKED -> 1.6f
         MINERAL, MINERAL_BRIGHT -> 2.0f
         STOCK -> 2.0f
         SANDSTONE, SANDSTONE_DARK -> 4.0f
@@ -41,7 +44,10 @@ object Mat {
 
     fun isDiggable(cell: Int): Boolean = !isOpen(cell) && hardness(cell) < Float.MAX_VALUE
 
-    /** Loose material slumps into tunnels; the harder strata hold their shape. */
+    /**
+     * Loose material slumps into open space; the harder strata hold their shape, and
+     * so does sand a miner has packed into a tunnel lining.
+     */
     fun isLoose(cell: Int): Boolean = cell == SAND || cell == SAND_DARK
 }
 
@@ -117,18 +123,20 @@ class MineWorld(
         // Off centre, so the first shaft is not dead in the middle of the frame.
         cartX = (width * (0.3f + generator.nextFloat() * 0.4f)).roundToInt().coerceIn(2, width - 4)
         cartY = surface[cartX] - 1
-        // Level a pad for the cart, laid in sandstone rather than sand.
+        // A headframe platform for the cart and the stockpile.
         //
-        // The surface sinks as sand slumps into the shafts, and a cart standing on sand
-        // was left floating in the sky with no ground beside it — every loaded miner
-        // lost its way home and the haul stopped dead. Sandstone holds its shape.
+        // Two failures shaped this. A cart standing on sand was left floating when the
+        // sand under it slumped away, stranding every loaded miner. And loads tipped
+        // beside the cart poured straight down the first shaft the crew sank there. The
+        // platform cannot be dug, so it stays put and nothing drains through it.
         val ground = surface[cartX]
-        for (x in cartX - 2..cartX + 3) {
+        for (x in cartX - 1..cartX + PLATFORM_WIDTH) {
             if (x !in 0 until width) continue
             for (y in 0 until height) {
                 val index = y * width + x
                 cells[index] = when {
                     y < ground -> Mat.SKY
+                    y == ground -> Mat.PLATFORM
                     y < ground + PAD_DEPTH -> Mat.SANDSTONE
                     else -> cells[index]
                 }
@@ -286,7 +294,7 @@ class MineWorld(
                 }
             }
             Mat.isMineral(cell) && miner.carrying -> endPath(miner)
-            Mat.isDiggable(cell) -> swing(miner, next)
+            Mat.isDiggable(cell) -> swing(miner, next, random)
             else -> endPath(miner)
         }
     }
@@ -297,16 +305,40 @@ class MineWorld(
     }
 
     /** One swing of the pick. The cell gives way once the damage passes its hardness. */
-    private fun swing(miner: Miner, index: Int) {
+    private fun swing(miner: Miner, index: Int, random: Random) {
         val cell = cells[index]
         damage[index] += PICK_POWER
         if (damage[index] < Mat.hardness(cell)) return
 
         damage[index] = 0f
         cells[index] = Mat.AIR
+        shore(index, random)
         if (Mat.isMineral(cell)) {
             miner.carrying = true
             endPath(miner)
+        }
+    }
+
+    /**
+     * Packs the loose ground around a fresh cut, the way a real crew shores a tunnel.
+     *
+     * Without it every shaft through the sand became a drain: sand slumped in, the crew
+     * dug it back out — destroying it — and more poured in behind, until the entire
+     * sand layer had gone down the hole. Shoring is deliberately incomplete, so cave-ins
+     * still happen; they are just local, and different every run.
+     */
+    private fun shore(index: Int, random: Random) {
+        val x = index % width
+        val y = index / width
+        for (dy in -1..1) for (dx in -1..1) {
+            val nx = x + dx
+            val ny = y + dy
+            if (nx !in 0 until width || ny !in 0 until height) continue
+            val neighbour = ny * width + nx
+            val cell = cells[neighbour]
+            if ((cell == Mat.SAND || cell == Mat.SAND_DARK) && random.nextFloat() < SHORE_CHANCE) {
+                cells[neighbour] = Mat.SAND_PACKED
+            }
         }
     }
 
@@ -317,14 +349,37 @@ class MineWorld(
         stockpile(random)
     }
 
-    /** Each load lands on a heap beside the cart, so the haul is visible at a glance. */
+    /**
+     * Each load is tipped onto the heap on the platform.
+     *
+     * Stacking every load on one column built a pole; letting the heap slump like sand
+     * spilled it off the platform's edge and down the nearest shaft. So the heap is
+     * built as a mound directly: each load goes on whichever column is lowest,
+     * favouring the middle, which keeps the sides at a steady slope and the whole
+     * thing on the boards.
+     */
     private fun stockpile(random: Random) {
-        val column = (cartX + 2 + random.nextInt(0, 3)).coerceIn(0, width - 1)
+        val centre = cartX + STOCK_OFFSET
+        var best = -1
+        var bestScore = Float.MAX_VALUE
+        for (column in centre - STOCK_HALF_WIDTH..centre + STOCK_HALF_WIDTH) {
+            if (column !in 0 until width) continue
+            val top = heapTop(column) ?: continue
+            val score = -top + abs(column - centre) * STOCK_SLOPE + random.nextFloat() * 0.3f
+            if (score < bestScore) {
+                bestScore = score
+                best = column
+            }
+        }
+        if (best < 0) return
+        heapTop(best)?.let { y -> cells[index(best, y)] = Mat.STOCK }
+    }
+
+    /** The open cell on top of the heap in [column], or null if the column is full. */
+    private fun heapTop(column: Int): Int? {
         var y = 0
         while (y < height - 1 && Mat.isOpen(cells[index(column, y + 1)])) y++
-        if (y in 1 until height && Mat.isOpen(cells[index(column, y)])) {
-            cells[index(column, y)] = Mat.STOCK
-        }
+        return if (y >= 1 && Mat.isOpen(cells[index(column, y)])) y else null
     }
 
     private fun nearCart(x: Int, y: Int): Boolean =
@@ -455,9 +510,9 @@ class MineWorld(
                 if (!Mat.isLoose(cells[here])) continue
 
                 val below = here + width
-                if (cells[below] == Mat.AIR) {
+                if (Mat.isOpen(cells[below])) {
                     cells[below] = cells[here]
-                    cells[here] = Mat.AIR
+                    vacate(here)
                     continue
                 }
                 val side = if (random.nextBoolean()) 1 else -1
@@ -465,13 +520,38 @@ class MineWorld(
                     val nx = x + direction
                     if (nx !in 0 until width) continue
                     val diagonal = below + direction
-                    // Only into dug-out ground, never out into the open sky.
-                    if (cells[diagonal] == Mat.AIR && cells[here + direction] == Mat.AIR) {
+                    if (Mat.isOpen(cells[diagonal]) && Mat.isOpen(cells[here + direction])) {
                         cells[diagonal] = cells[here]
-                        cells[here] = Mat.AIR
+                        vacate(here)
                         break
                     }
                 }
+            }
+        }
+        openToSky()
+    }
+
+    /** A cell something just left: sky if it is under open sky, a void otherwise. */
+    private fun vacate(index: Int) {
+        val above = index - width
+        cells[index] = if (above < 0 || cells[above] == Mat.SKY) Mat.SKY else Mat.AIR
+    }
+
+    /**
+     * A pit wider than a shaft is open to the sky and should look like it. A one-wide
+     * shaft stays dark — you are looking down a hole — but a crater under open sky
+     * rendered as a black cave with the sky for a ceiling until this pass.
+     */
+    private fun openToSky() {
+        for (y in 1 until height) {
+            for (x in 0 until width) {
+                val here = y * width + x
+                if (cells[here] != Mat.AIR || cells[here - width] != Mat.SKY) continue
+                val leftSky = x > 0 && cells[here - 1] == Mat.SKY
+                val rightSky = x < width - 1 && cells[here + 1] == Mat.SKY
+                val leftOpen = x > 0 && Mat.isOpen(cells[here - 1])
+                val rightOpen = x < width - 1 && Mat.isOpen(cells[here + 1])
+                if (leftSky || rightSky || (leftOpen && rightOpen)) cells[here] = Mat.SKY
             }
         }
     }
@@ -522,6 +602,19 @@ class MineWorld(
 
         /** How much a planner dislikes digging relative to walking. */
         private const val DIG_WEIGHT = 2f
+
+        /** Chance each loose neighbour of a fresh cut gets packed. */
+        private const val SHORE_CHANCE = 0.75f
+
+        /** Columns right of the cart where loads are tipped; on the platform. */
+        private const val STOCK_OFFSET = 5
+
+        /** Half-width of the stockpile, and how steep its flanks are. */
+        private const val STOCK_HALF_WIDTH = 3
+        private const val STOCK_SLOPE = 1.4f
+
+        /** Platform width to the right of the cart. */
+        private const val PLATFORM_WIDTH = 8
 
         /** Rows of sandstone under the cart. */
         private const val PAD_DEPTH = 3
