@@ -1,8 +1,23 @@
-app/build
-build
+# Build output
+build/
+app/build/
 *.apk
 *.aab
-.gradle
+*.ap_
+*.dex
+
+# Gradle
+.gradle/
 local.properties
+
+# Kotlin
+.kotlin/
+
+# IDE
+.idea/
 *.iml
+captures/
+*.hprof
+
+# OS
 .DS_Store

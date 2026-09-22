@@ -1,10 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon foreground. All artwork sits inside the centre 72x72 of the 108x108
+  viewport so no part of it is cropped by a launcher's mask.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Upper and lower frame caps -->
     <path
-        android:fillColor="#D4A437"
-        android:pathData="M54,8C30,8 14,26 14,52C14,70 26,86 42,93L42,100L66,100L66,93C82,86 94,70 94,52C94,26 78,8 54,8ZM54,22C68,22 80,33 82,48L26,48C28,33 40,22 54,22ZM44,54L44,72L52,72L52,62L56,62L56,72L64,72L64,54L56,54L56,50L52,50L52,54L44,54Z"/>
+        android:fillColor="@color/icon_sand"
+        android:pathData="M33,24h42a3,3 0 0 1 0,6h-42a3,3 0 0 1 0,-6z" />
+    <path
+        android:fillColor="@color/icon_sand"
+        android:pathData="M33,78h42a3,3 0 0 1 0,6h-42a3,3 0 0 1 0,-6z" />
+
+    <!-- Glass: upper chamber drained, lower chamber heaped -->
+    <path
+        android:fillColor="@color/icon_sand"
+        android:fillAlpha="0.45"
+        android:pathData="M38,30L70,30L57,54L70,78L38,78L51,54Z" />
+
+    <!-- Sand: the stream and the mound -->
+    <path
+        android:fillColor="@color/icon_sand"
+        android:pathData="M52.6,52h2.8v14h-2.8z" />
+    <path
+        android:fillColor="@color/icon_sand"
+        android:pathData="M38,78L70,78L62,66Q54,60 46,66Z" />
+    <path
+        android:fillColor="@color/icon_sand"
+        android:fillAlpha="0.8"
+        android:pathData="M38,30L70,30L64,41L44,41Z" />
 </vector>

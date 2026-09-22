@@ -1,32 +1,67 @@
-# HOURGLASS — Session State & Known Issues
+# HOURGLASS — state of the codebase
 
-## Intention and Design Goals
-HOURGLASS is a lightweight, on-device productivity timer app with a sand/amber/gold aesthetic. It is built with Kotlin and Jetpack Compose and uses Room for local persistence. The primary goals are:
+## What the app is
+An on-device productivity timer built with Kotlin and Jetpack Compose, persisting to
+Room. Three screens — home, new timer, settings — over one running timer at a time,
+plus a bedtime countdown and a session log.
 
-- **Bedtime countdown**: A persistent countdown card on the home screen with natural-language wording (e.g., "20 hours 36 minutes until bedtime") and a circular progress indicator.
-- **Task timers**: Regular sand timers created by the user and displayed as glowing `SandTimerBlock` cards on the home screen.
-- **Quicksand timers**: Quick/ad-hoc timers shown as muted `QuicksandBlock` cards for short tasks.
-- **Single active timer**: Starting a new timer pauses/stops the previous one.
-- **Persistent foreground notification**: Active timers should show a foreground-service notification with task name and remaining time.
-- **Overtime / overrun banking**: When a timer runs past its target duration, elapsed time is recorded as overtime in session history and task stats.
-- **Session history**: Completed sessions are recorded with planned/elapsed/overtime durations.
+## Architecture
 
-## Current State
-- The app compiles successfully with `:app:assembleDebug`.
-- Home screen renders the bedtime countdown, task list, and quicksand section.
-- Adding a task via the FAB works and the timer card appears.
-- Starting a regular timer works and the foreground notification channel is created and active.
-- The notification channel `hourglass_timers` is visible in `dumpsys notification`.
+```
+core/        pure Kotlin, no Android imports, unit tested
+  TimeFormat    duration -> clock/compact strings, signed for overtime
+  TimeOfDay     HH:mm value type with parsing and display formatting
+  Bedtime       countdown, sleep length, wind-down window
+  Timer         TimerKind / TimerRef / ActiveTimer / TimerRecord
 
-## Known Issues / Unfinished Work
-1. **Pause/Resume responsiveness under test**: Tapping Pause while a timer was running did not visibly pause the timer in manual ADB testing. The timer continued counting down and the button remained "Pause". This may be a touch-coordinate timing issue during testing, but it should be investigated by replaying pause/resume in the UI or adding logs in `HourglassViewModel.pauseTimer()` and `resumeTimer()`.
-2. **Overtime and long sessions**: The model supports overtime fields and `TimerSessionEntity`, but long-running sessions were not tested because the default task duration is one hour.
-3. **Boot restoration**: `BootReceiver` and `TimerService` are declared, but automatic restoration of a running timer after device reboot has not been verified.
-4. **Settings persistence**: Settings screen was not exercised in the current session; bedtime and other preferences should be verified.
-5. **Quicksand quick-add flow**: Quicksand creation and quick tasks were not manually tested in the current session.
+data/
+  entity/       TaskEntity, QuicksandTaskEntity, TimerSessionEntity, SettingsEntity
+  dao/          one DAO per table
+  database/     HourglassDatabase (v2, schemas exported to app/schemas)
+  repository/   HourglassRepository — the only thing that touches DAOs
 
-## Aesthetic Notes
-- Palette uses warm sand, amber glass, terracotta, teal, rose, indigo, olive, and coral accents with `GlassBackground` cards on a dark sand surface.
-- Cards have rounded corners, subtle borders, and a glowing border animation while timers run.
-- Typography uses thin display weights for timer durations and small uppercase labels for metadata.
-- The hourglass logo and sand visuals reinforce the sand-timer metaphor.
+di/            AppModule: database, DAOs, the application-scoped CoroutineScope
+timer/         TimerController — process singleton, owns the running timer
+service/       TimerService + NotificationHelper — render controller state
+viewmodel/     HourglassViewModel (home), SettingsViewModel (sleep)
+ui/            theme tokens, drawn components, screens, navigation, previews
+```
+
+### Where the timer lives
+`TimerController` is a `@Singleton`. It holds `StateFlow<ActiveTimer?>`, ticks at 4 Hz
+on an application-scoped coroutine, and writes a `TimerRecord` to the settings table on
+every state transition (not on every tick). The ViewModel and the service are both
+readers. This is deliberate: a timer is not a property of a screen.
+
+Elapsed time is banked as `accumulatedMillis` plus a wall-clock anchor for the current
+run, so `elapsedAt(now)` reconstructs the truth after the process has been away — which
+is what makes restore-after-reboot work without a boot receiver.
+
+### Identity
+Sand timers and quicksand are separate tables whose ids both start at 1, so an id alone
+is ambiguous. Everything above the DAOs works in `TimerRef(id, kind)`.
+
+## Verification status
+- `core/` is covered by JVM unit tests in `app/src/test/java/com/hourglass/core/`
+  (formatting, bedtime arithmetic, time parsing, the record state machine). These run
+  with `./gradlew testDebugUnitTest` and have been run green.
+- The Android build (`:app:assembleDebug`) has **not** been run since the rewrite —
+  the environment it was edited in had no reachable Android SDK. Compile it before
+  trusting the UI layer.
+- There are no instrumented tests yet.
+
+## Known gaps / next steps
+1. **No UI tests.** The Compose layer has previews but no `ui-test-junit4` coverage;
+   start/pause/resume/stop on a card is the obvious first test.
+2. **Room migration.** The schema moved from v1 to v2 (quicksand gained
+   `sessionsCompleted`, sessions gained indices). Since nothing has shipped, the
+   database falls back to destructive migration. Write a real `Migration` before the
+   first release and drop `fallbackToDestructiveMigration()`.
+3. **Session history is written but barely read.** Only the day's total is surfaced.
+   The data is there for streaks, per-task trends and overrun feedback.
+4. **`specialUse` foreground service type.** Correct for a local timer, but Play
+   requires a written justification at submission time; the manifest property carries
+   the wording.
+5. **No timer editing.** A timer can be created and archived, not renamed or
+   re-allocated.
+6. **Single locale.** All strings are externalised in `strings.xml` but only `en` exists.

@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_bg">#F5F0E8</color>
+    <!-- Mirrors HourglassColors.backdropTop so the launch window matches the first frame. -->
+    <color name="window_background">#FCF8F1</color>
+    <color name="icon_background">#241D16</color>
+    <color name="icon_sand">#E0A63C</color>
 </resources>
