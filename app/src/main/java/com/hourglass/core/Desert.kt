@@ -81,7 +81,7 @@ data class Desert(
             return min(1.0, scaled).toFloat().coerceAtLeast(MIN_VISIBLE_HEIGHT)
         }
 
-        private const val MIN_VISIBLE_HEIGHT = 0.06f
+        private const val MIN_VISIBLE_HEIGHT = 0.20f
 
         /**
          * Bands, base-first, sized by each session's share of the total. Once there are

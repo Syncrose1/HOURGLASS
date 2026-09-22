@@ -113,7 +113,11 @@ fun SandCanvas(
         for (index in buffer.indices) {
             val value = buffer[index]
             pixels[index] = when {
-                value == SandGrid.WALL -> wallArgb
+                // A wall is only inked where it meets the inside, so the vessel reads
+                // as a glass outline rather than as a solid block with a hole in it.
+                value == SandGrid.WALL ->
+                    if (bordersInterior(buffer, index, grid.width, grid.height)) wallArgb
+                    else argb[0]
                 value <= 0 -> argb[0]
                 else -> argb.getOrElse(value) { argb[0] }
             }
@@ -126,6 +130,22 @@ fun SandCanvas(
             filterQuality = FilterQuality.None
         )
     }
+}
+
+/**
+ * True when any in-bounds four-neighbour of this wall cell is not itself a wall.
+ *
+ * Edge cells count: the vessel's end caps sit on the grid's first and last rows, and
+ * skipping them left the glass open at both ends.
+ */
+private fun bordersInterior(buffer: IntArray, index: Int, width: Int, height: Int): Boolean {
+    val x = index % width
+    val y = index / width
+    if (x > 0 && buffer[index - 1] != SandGrid.WALL) return true
+    if (x < width - 1 && buffer[index + 1] != SandGrid.WALL) return true
+    if (y > 0 && buffer[index - width] != SandGrid.WALL) return true
+    if (y < height - 1 && buffer[index + width] != SandGrid.WALL) return true
+    return false
 }
 
 private fun toCell(position: Offset, width: Int, height: Int, grid: SandGrid): Pair<Int, Int>? {

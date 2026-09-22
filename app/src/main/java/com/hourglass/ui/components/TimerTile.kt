@@ -2,9 +2,9 @@ package com.hourglass.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,33 +22,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.hourglass.core.TileDetail
 import com.hourglass.R
+import com.hourglass.core.TileDetail
 import com.hourglass.core.TimeFormat
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
+import com.hourglass.ui.world.WorldRegistry
+import com.hourglass.ui.world.WorldView
 import com.hourglass.viewmodel.TimerCard
 
 /**
- * One cell of the wall.
+ * One cell of the treemap.
  *
- * A tile has no controls at all. Tapping it opens the timer full-screen and starts it;
- * that is the only thing it does, because a running timer should not be something you
- * can fiddle with from a grid. Editing is a long press, which is deliberately not a
- * gesture you make by accident.
+ * A tile has no controls. Tapping it opens the timer full-screen and starts it; that
+ * is the only thing it does, because a running timer should not be something you can
+ * fiddle with from a wall. Editing is a long press, which is not a gesture you make
+ * by accident.
+ *
+ * Cells come in whatever shape the carve-up gives them, so everything sizes off the
+ * short edge and the contents thin out as the cell shrinks.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -63,14 +68,14 @@ fun TimerTile(
     val sand = colors.sand(card.sand)
     val active = !card.isIdle
 
-    val lift by animateFloatAsState(
-        targetValue = if (card.isRunning) 1.03f else 1f,
-        animationSpec = tween(durationMillis = 420),
-        label = "tile_lift"
+    val warmth by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = tween(durationMillis = 480),
+        label = "tile_warmth"
     )
 
     TileShell(
-        modifier = modifier.scale(lift),
+        modifier = modifier,
         accent = sand,
         active = active,
         onClick = onOpen,
@@ -81,23 +86,35 @@ fun TimerTile(
             append(TimeFormat.compact(card.remainingMillis))
             if (card.isOvertime) append(", ${stringResource(R.string.overtime)}")
             if (card.isPaused) append(", ${stringResource(R.string.paused)}")
-        }
+        },
+        // Each tile carries a wash of its own sand, so the wall reads as a set of
+        // different materials rather than a grid of identical grey boxes.
+        background = Brush.verticalGradient(
+            listOf(
+                lerp(colors.surfaceMuted, sand, 0.10f + 0.14f * warmth),
+                lerp(colors.surfaceMuted, sand, 0.04f + 0.07f * warmth)
+            )
+        )
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            HourglassGlass(
-                progress = card.progress,
-                sandColor = sand,
+            // The timer's own world. Idle, it is the untouched ground this session
+            // will dig; running, it is being dug.
+            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis) {
+                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis)
+            }
+            WorldView(
+                session = session,
+                mineral = sand,
                 running = card.isRunning,
-                overtime = card.isOvertime,
-                showFrame = detail != TileDetail.GLYPH,
+                timerProgress = card.timerProgress,
                 modifier = Modifier
-                    .fillMaxWidth(if (detail == TileDetail.FULL) 0.46f else 0.56f)
-                    .weight(1f, fill = false)
-                    .height(if (detail == TileDetail.FULL) 76.dp else 52.dp)
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.small)
             )
 
             if (detail.showsTime) {
@@ -118,11 +135,11 @@ fun TimerTile(
                 Text(
                     text = card.name,
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.textMuted,
+                    color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = Spacing.xs)
+                    modifier = Modifier.padding(horizontal = Spacing.sm)
                 )
             }
         }
@@ -140,23 +157,20 @@ fun TimerTile(
     }
 }
 
-/** A utility tile: settings, the desert, adding a timer. */
+/** A utility control: the desert, settings, adding a timer. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ActionTile(
     icon: ImageVector,
     label: String,
-    detail: TileDetail,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    tint: Color? = null
+    modifier: Modifier = Modifier
 ) {
     val colors = HourglassTheme.colors
-    val colour = tint ?: colors.textSecondary
 
     TileShell(
         modifier = modifier,
-        accent = colour,
+        accent = colors.textSecondary,
         active = false,
         onClick = onClick,
         onLongClick = null,
@@ -170,19 +184,17 @@ fun ActionTile(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = colour,
-                modifier = Modifier.size(if (detail == TileDetail.FULL) 26.dp else 20.dp)
+                tint = colors.textSecondary,
+                modifier = Modifier.size(20.dp)
             )
-            if (detail.showsName) {
-                Spacer(Modifier.height(Spacing.sm))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -207,23 +219,24 @@ fun TileShell(
         modifier = modifier
             .clip(shape)
             .then(
-                if (background != null) {
-                    Modifier.background(background)
-                } else {
-                    Modifier.background(if (active) colors.surface else colors.surfaceMuted)
-                }
+                if (background != null) Modifier.background(background)
+                else Modifier.background(colors.surfaceMuted)
             )
             .border(
                 width = if (active) 1.5.dp else 1.dp,
-                color = if (active) accent.copy(alpha = 0.85f) else colors.outline,
+                color = if (active) accent.copy(alpha = 0.9f) else colors.outline,
                 shape = shape
             )
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics { contentDescription = description }
             .padding(Spacing.xs),
         content = content
     )
 }
+
+internal fun lerp(from: Color, to: Color, fraction: Float): Color = Color(
+    red = from.red + (to.red - from.red) * fraction,
+    green = from.green + (to.green - from.green) * fraction,
+    blue = from.blue + (to.blue - from.blue) * fraction,
+    alpha = from.alpha + (to.alpha - from.alpha) * fraction
+)

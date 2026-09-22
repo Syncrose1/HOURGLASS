@@ -6,6 +6,8 @@
     <string name="quicksand">Quicksand</string>
     <string name="sand_timer">Sand timer</string>
     <string name="new_timer">New timer</string>
+    <string name="your_day_awaits">Your day awaits</string>
+    <string name="empty_state_hint">Add a sand timer for the work you planned, or quicksand for everything that comes up.</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
 

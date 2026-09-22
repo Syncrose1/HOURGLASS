@@ -12,29 +12,45 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Terrain
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Terrain
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hourglass.R
 import com.hourglass.core.TileLayout
 import com.hourglass.core.TimeOfDay
 import com.hourglass.core.TimerRef
+import com.hourglass.core.Treemap
 import com.hourglass.ui.components.ActionTile
-import com.hourglass.ui.components.BedtimeTile
+import com.hourglass.ui.components.BedtimeBar
+import com.hourglass.ui.components.SandGlass
+import com.hourglass.ui.components.SandDetail
 import com.hourglass.ui.components.TimerTile
+import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
 import com.hourglass.viewmodel.HomeState
 import com.hourglass.viewmodel.HourglassViewModel
@@ -44,14 +60,17 @@ import com.hourglass.viewmodel.TimerCard
 /**
  * Everything, on one screen, always.
  *
- * There is no scrolling here and no scrolling anywhere it can be avoided: however many
- * timers exist, they tile into the space available and the tiles get smaller. That is
- * the point rather than a limitation — a wall that visibly gets denser is an argument
- * for having fewer timers, which a scrolling list never makes.
+ * Three bands and no scrolling anywhere: the day as a bar across the top, the timers
+ * carving up everything under it, and the things you only touch when idle along the
+ * bottom.
  *
- * Tapping a timer hands the whole screen over to it. Everything else — settings, the
- * desert, adding and editing — lives here, and is therefore only reachable when
- * nothing is running.
+ * The timers are a squarified treemap weighted by how long each one is allocated, so
+ * the wall is a picture of how the day is committed — an afternoon's work is visibly
+ * a bigger piece than a ten-minute errand — and adding a timer redivides the space
+ * instead of extending it downward.
+ *
+ * Tapping a timer hands it the whole screen. Everything else lives here, and is
+ * therefore only reachable when nothing is running.
  */
 @Composable
 fun HomeScreen(
@@ -74,10 +93,14 @@ fun HomeScreen(
 
     val focused: TimerCard? = home.focusedCard
 
+    // Kept so the focus view still has something to draw while it fades out, after
+    // the timer has already been dropped from the state it reads.
+    var lastFocused by remember { mutableStateOf<TimerCard?>(null) }
+    LaunchedEffect(focused) { if (focused != null) lastFocused = focused }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        TileWall(
+        Wall(
             home = home,
-            bedtimeMinutes = home.minutesUntilBedtime,
             bedtime = settings.bedtime,
             onOpenTimer = { card ->
                 haptics.tick()
@@ -89,13 +112,8 @@ fun HomeScreen(
             onOpenDesert = onOpenDesert
         )
 
-        AnimatedVisibility(
-            visible = focused != null,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            // Held separately so the card keeps rendering through the exit animation.
-            val card = focused ?: home.lastFocusedCard
+        AnimatedVisibility(visible = focused != null, enter = fadeIn(), exit = fadeOut()) {
+            val card = focused ?: lastFocused
             if (card != null) {
                 FocusScreen(
                     card = card,
@@ -114,9 +132,8 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TileWall(
+private fun Wall(
     home: HomeState,
-    bedtimeMinutes: Int,
     bedtime: TimeOfDay,
     onOpenTimer: (TimerCard) -> Unit,
     onEditTimer: (TimerRef) -> Unit,
@@ -125,109 +142,143 @@ private fun TileWall(
     onOpenDesert: () -> Unit
 ) {
     val timers = home.sandTimers + home.quicksand
-    // Bedtime leads, then the timers, then the things you only reach when idle.
-    val tileCount = timers.size + UTILITY_TILES
 
-    BoxWithConstraints(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-            .padding(Spacing.md)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
-        val aspect = if (maxHeight.value > 0f) maxWidth.value / maxHeight.value else 0.6f
-        val shape = TileLayout.shapeFor(tileCount, aspect)
-        val tileWidth = maxWidth.value / shape.columns
-        val detail = TileLayout.detailFor(tileWidth)
+        BedtimeBar(
+            bedtime = bedtime,
+            minutesUntil = home.minutesUntilBedtime,
+            onClick = onOpenSettings
+        )
 
-        val cells: List<Tile> = buildList {
-            add(Tile.Bedtime)
-            timers.forEach { add(Tile.Timer(it)) }
-            add(Tile.Desert)
-            add(Tile.Settings)
-            add(Tile.Add)
+        Box(modifier = Modifier.weight(1f)) {
+            if (timers.isEmpty()) {
+                EmptyWall()
+            } else {
+                TimerTreemap(
+                    timers = timers,
+                    onOpenTimer = onOpenTimer,
+                    onEditTimer = onEditTimer
+                )
+            }
         }
 
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ACTION_ROW_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            for (row in 0 until shape.rows) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    for (column in 0 until shape.columns) {
-                        val index = row * shape.columns + column
-                        if (index < cells.size) {
-                            val cell = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                            when (val tile = cells[index]) {
-                                Tile.Bedtime -> BedtimeTile(
-                                    bedtime = bedtime,
-                                    minutesUntil = bedtimeMinutes,
-                                    detail = detail,
-                                    onClick = onOpenSettings,
-                                    modifier = cell
-                                )
-
-                                is Tile.Timer -> TimerTile(
-                                    card = tile.card,
-                                    detail = detail,
-                                    onOpen = { onOpenTimer(tile.card) },
-                                    onEdit = { onEditTimer(tile.card.ref) },
-                                    modifier = cell
-                                )
-
-                                Tile.Desert -> ActionTile(
-                                    icon = Icons.Rounded.Terrain,
-                                    label = stringResource(R.string.desert),
-                                    detail = detail,
-                                    onClick = onOpenDesert,
-                                    modifier = cell
-                                )
-
-                                Tile.Settings -> ActionTile(
-                                    icon = Icons.Rounded.Settings,
-                                    label = stringResource(R.string.settings),
-                                    detail = detail,
-                                    onClick = onOpenSettings,
-                                    modifier = cell
-                                )
-
-                                Tile.Add -> ActionTile(
-                                    icon = Icons.Rounded.Add,
-                                    label = stringResource(R.string.new_timer),
-                                    detail = detail,
-                                    onClick = onAddTimer,
-                                    modifier = cell
-                                )
-                            }
-                        } else {
-                            // Keeps the last row's tiles the same size as every other
-                            // row's rather than stretching them across the gap.
-                            Spacer(Modifier.weight(1f).fillMaxHeight())
-                        }
-                    }
-                }
-            }
+            ActionTile(
+                icon = Icons.Rounded.Terrain,
+                label = stringResource(R.string.desert),
+                onClick = onOpenDesert,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            ActionTile(
+                icon = Icons.Rounded.Settings,
+                label = stringResource(R.string.settings),
+                onClick = onOpenSettings,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            ActionTile(
+                icon = Icons.Rounded.Add,
+                label = stringResource(R.string.new_timer),
+                onClick = onAddTimer,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
         }
     }
 }
 
-/** What can occupy a cell of the wall. */
-private sealed interface Tile {
-    data object Bedtime : Tile
-    data class Timer(val card: TimerCard) : Tile
-    data object Desert : Tile
-    data object Settings : Tile
-    data object Add : Tile
+/**
+ * Cells are weighted by allocated duration, not by time remaining: a running timer
+ * that shrank as it counted down would make the whole wall crawl.
+ */
+@Composable
+private fun TimerTreemap(
+    timers: List<TimerCard>,
+    onOpenTimer: (TimerCard) -> Unit,
+    onEditTimer: (TimerRef) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val width = maxWidth
+        val height = maxHeight
+        val cells = remember(timers, width, height) {
+            Treemap.squarify(
+                items = timers,
+                width = width.value,
+                height = height.value,
+                minWeight = MIN_CELL_WEIGHT
+            ) { it.durationMillis / 60_000f }
+        }
+
+        cells.forEach { cell ->
+            val shortEdge = min(cell.width.dp, cell.height.dp)
+            TimerTile(
+                card = cell.item,
+                detail = TileLayout.detailFor(shortEdge.value),
+                onOpen = { onOpenTimer(cell.item) },
+                onEdit = { onEditTimer(cell.item.ref) },
+                modifier = Modifier
+                    .offset(x = cell.x.dp, y = cell.y.dp)
+                    .size(width = cell.width.dp, height = cell.height.dp)
+                    .padding(GUTTER)
+            )
+        }
+    }
 }
 
-/** Bedtime, desert, settings, add. */
-private const val UTILITY_TILES = 4
+@Composable
+private fun EmptyWall() {
+    val colors = HourglassTheme.colors
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Big enough to simulate properly, so even the empty state is real sand.
+        SandGlass(
+            progress = EMPTY_STATE_PROGRESS,
+            sand = colors.accent,
+            running = true,
+            overtime = false,
+            detail = SandDetail.SMALL,
+            modifier = Modifier.size(width = 108.dp, height = 144.dp)
+        )
+        Spacer(Modifier.height(Spacing.xl))
+        Text(
+            text = stringResource(R.string.your_day_awaits),
+            style = MaterialTheme.typography.headlineSmall,
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        Text(
+            text = stringResource(R.string.empty_state_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = Spacing.xxl)
+        )
+    }
+}
+
+/** Enough sand left in the top that the empty state's glass is visibly running. */
+private const val EMPTY_STATE_PROGRESS = 0.25f
+
+private val ACTION_ROW_HEIGHT = 64.dp
+
+/** Half the gap between cells; each side contributes one. */
+private val GUTTER = 3.dp
+
+/** A five-minute floor, so the shortest quicksand still gets a cell worth tapping. */
+private const val MIN_CELL_WEIGHT = 5f
 
 /** Every tap answers with the same short tick. */
 private fun HapticFeedback.tick() = performHapticFeedback(HapticFeedbackType.TextHandleMove)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -73,6 +74,9 @@ fun DesertScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                // Capped: the dune is the hero, but a horizon two-thirds of the way up
+                // the screen is mostly sky.
+                .heightIn(max = DUNE_MAX_HEIGHT)
                 .padding(horizontal = Spacing.lg)
                 .clip(MaterialTheme.shapes.large)
         ) {
@@ -254,6 +258,8 @@ private fun MilestoneLine(label: String, progress: Float, modifier: Modifier = M
         }
     }
 }
+
+private val DUNE_MAX_HEIGHT = 300.dp
 
 /** Weekday initials in the device's locale, indexed Sunday-first. */
 private fun weekdayInitials(): List<String> {

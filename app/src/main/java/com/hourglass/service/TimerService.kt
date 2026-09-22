@@ -1,10 +1,13 @@
 package com.hourglass.service
 
+import android.Manifest
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.hourglass.core.ActiveTimer
 import com.hourglass.timer.TimerController
 import dagger.hilt.android.AndroidEntryPoint
@@ -31,6 +34,11 @@ class TimerService : Service() {
     @Inject lateinit var controller: TimerController
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // The permission guard is repeated at each notify rather than factored into a
+    // helper: catching the SecurityException also works, but a check states the
+    // intent better, and it is the only form the platform's lint credits — it will
+    // not follow the test through a function call.
 
     /** True once [startForeground] has been called; the platform requires exactly one. */
     private var foregrounded = false
@@ -85,7 +93,12 @@ class TimerService : Service() {
         observingCompletions = true
         scope.launch {
             controller.completions.collect { timer ->
-                runCatching {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(
+                        this@TimerService,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
                     NotificationManagerCompat.from(this@TimerService)
                         .notify(
                             NotificationHelper.NOTIFICATION_DONE_ID,
@@ -108,7 +121,12 @@ class TimerService : Service() {
         } else {
             // Without POST_NOTIFICATIONS this quietly does nothing, which is the right
             // outcome: the timer itself keeps running either way.
-            runCatching {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
                 NotificationManagerCompat.from(this)
                     .notify(NotificationHelper.NOTIFICATION_ID, notification)
             }

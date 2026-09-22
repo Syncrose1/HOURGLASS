@@ -1,32 +1,33 @@
 package com.hourglass.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.hourglass.core.Desert
-import com.hourglass.core.Milestone
-import com.hourglass.core.duneCurve
+import com.hourglass.core.Direction
+import com.hourglass.core.SandGrid
+import com.hourglass.core.TimerSand
 import com.hourglass.ui.theme.HourglassTheme
-import kotlin.math.sin
+import kotlin.math.roundToInt
+import kotlin.random.Random
 
 /**
- * The dune your banked time has built.
+ * The dune your banked time has built — poured, not painted.
  *
- * Every band is one session, in the colour of the timer that earned it, oldest at the
- * base. The shape is a real dune profile — a long windward slope into a steeper lee
- * face — so the pile reads as a landform rather than a bar chart lying on its side.
+ * Every session becomes a measured quantity of actual grains in the colour of the
+ * timer that earned it, oldest poured first, and the pile that results is whatever
+ * the automaton makes of them. The slope is the sand's own angle of repose rather
+ * than a curve someone chose, and the bands are where each session's grains happened
+ * to land. Drawing this would have been easier and would have meant nothing.
  *
- * Nothing here is decorative: the height is your total, the bands are your sessions,
- * and the landmarks are thresholds you actually crossed.
+ * The pour is progressive, so opening the screen shows the desert being laid down.
  */
 @Composable
 fun DuneCanvas(
@@ -35,210 +36,114 @@ fun DuneCanvas(
     modifier: Modifier = Modifier
 ) {
     val colors = HourglassTheme.colors
+    val random = remember { Random(desert.totalMillis) }
 
-    val height by animateFloatAsState(
-        targetValue = desert.height,
-        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
-        label = "dune_height"
-    )
+    val grid = remember(desert) { SandGrid(GRID_WIDTH, GRID_HEIGHT).also { floorIt(it) } }
+
+    // One tint per sand, two shades each, so the strata have some grain to them.
+    val tints = remember(colors) {
+        TimerSand.entries.flatMap { sand ->
+            val base = colors.sand(sand)
+            listOf(lerp(base, Color.White, 0.14f), lerp(base, Color.Black, 0.12f))
+        }
+    }
+
+    // The grains still to pour, oldest session first, as tint indices.
+    val schedule = remember(desert) { pourSchedule(desert) }
+    val poured = remember(desert) { intArrayOf(0) }
 
     val skyTop = if (nightMode) colors.duskTop else colors.backdropTop
     val skyBottom = if (nightMode) colors.duskBottom else colors.accentSoft
-    val bandColours = desert.strata.map { colors.sand(it.sand) }
 
-    Canvas(modifier = modifier) {
-        drawRect(
-            brush = Brush.verticalGradient(listOf(skyTop, skyBottom)),
-            size = size
-        )
-
-        drawCelestialBody(
-            nightMode = nightMode,
-            tint = if (nightMode) colors.glassHighlight else colors.accent
-        )
-
-        if (desert.isEmpty) {
-            drawFlatSand(colors.sand(com.hourglass.core.TimerSand.AMBER).copy(alpha = 0.35f))
-            return@Canvas
-        }
-
-        // A second, smaller dune behind the main one gives the horizon some depth.
-        drawDune(
-            heightFraction = height * 0.55f,
-            skew = 0.66f,
-            bands = listOf(colors.sand(desert.strata.first().sand).copy(alpha = 0.35f)),
-            bounds = listOf(0f to 1f)
-        )
-
-        drawDune(
-            heightFraction = height,
-            skew = 0.38f,
-            bands = bandColours,
-            bounds = desert.strata.map { it.start to it.end }
-        )
-
-        desert.reached.forEach { milestone ->
-            drawLandmark(
-                milestone = milestone,
-                heightFraction = height,
-                skew = 0.38f,
-                tint = colors.frame
+    Box(modifier = modifier) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(brush = Brush.verticalGradient(listOf(skyTop, skyBottom)), size = size)
+            val bodyTint = if (nightMode) colors.glassHighlight else colors.accent
+            val centre = Offset(size.width * 0.78f, size.height * 0.2f)
+            val radius = size.minDimension * 0.06f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(bodyTint.copy(alpha = 0.3f), Color.Transparent),
+                    center = centre,
+                    radius = radius * 3.5f
+                ),
+                radius = radius * 3.5f,
+                center = centre
             )
-        }
-    }
-}
-
-private fun DrawScope.drawFlatSand(colour: Color) {
-    val baseline = size.height * 0.88f
-    drawRect(
-        color = colour,
-        topLeft = Offset(0f, baseline),
-        size = androidx.compose.ui.geometry.Size(size.width, size.height - baseline)
-    )
-}
-
-/**
- * Draws the dune as stacked bands. Each band follows the same silhouette scaled to its
- * own share of the height, so the strata bend with the landform instead of lying flat
- * across it.
- */
-private fun DrawScope.drawDune(
-    heightFraction: Float,
-    skew: Float,
-    bands: List<Color>,
-    bounds: List<Pair<Float, Float>>
-) {
-    if (bands.isEmpty()) return
-    val baseline = size.height
-    val peak = size.height * heightFraction.coerceIn(0f, 1f)
-    val steps = SILHOUETTE_STEPS
-
-    bands.forEachIndexed { index, colour ->
-        val (start, end) = bounds.getOrElse(index) { 0f to 1f }
-        val path = Path()
-
-        // Upper edge of the band, left to right.
-        for (step in 0..steps) {
-            val t = step.toFloat() / steps
-            val y = baseline - duneCurve(t, peak, skew) * end
-            val x = t * size.width
-            if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        // Lower edge, back again.
-        for (step in steps downTo 0) {
-            val t = step.toFloat() / steps
-            val y = baseline - duneCurve(t, peak, skew) * start
-            path.lineTo(t * size.width, y)
-        }
-        path.close()
-
-        drawPath(path, color = colour)
-    }
-
-    // A pale crest line catches the light along the ridge.
-    val crest = Path()
-    for (step in 0..steps) {
-        val t = step.toFloat() / steps
-        val y = baseline - duneCurve(t, peak, skew)
-        val x = t * size.width
-        if (step == 0) crest.moveTo(x, y) else crest.lineTo(x, y)
-    }
-    drawPath(
-        crest,
-        color = Color.White.copy(alpha = 0.18f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = size.minDimension * 0.006f)
-    )
-}
-
-private fun DrawScope.drawCelestialBody(nightMode: Boolean, tint: Color) {
-    val centre = Offset(size.width * 0.78f, size.height * 0.22f)
-    val radius = size.minDimension * 0.07f
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(tint.copy(alpha = 0.35f), Color.Transparent),
-            center = centre,
-            radius = radius * 3f
-        ),
-        radius = radius * 3f,
-        center = centre
-    )
-    drawCircle(
-        color = tint.copy(alpha = if (nightMode) 0.85f else 0.95f),
-        radius = radius,
-        center = centre
-    )
-}
-
-/**
- * Landmarks stand on the dune's surface at a fixed fraction along it, so they sit on
- * the slope rather than floating over it.
- */
-private fun DrawScope.drawLandmark(
-    milestone: Milestone,
-    heightFraction: Float,
-    skew: Float,
-    tint: Color
-) {
-    val t = Milestone.offsetFor(milestone)
-    val baseline = size.height
-    val peak = size.height * heightFraction.coerceIn(0f, 1f)
-    val groundY = baseline - duneCurve(t, peak, skew)
-    val x = t * size.width
-    val scale = size.minDimension
-
-    when (milestone) {
-        Milestone.FIRST_DUNE -> Unit // the dune itself is the landmark
-
-        Milestone.GRASS -> repeat(3) { blade ->
-            val offset = (blade - 1) * scale * 0.012f
-            drawLine(
-                color = tint.copy(alpha = 0.7f),
-                start = Offset(x + offset, groundY),
-                end = Offset(x + offset + sin(blade.toFloat()) * scale * 0.01f, groundY - scale * 0.035f),
-                strokeWidth = scale * 0.005f
-            )
+            drawCircle(bodyTint.copy(alpha = 0.9f), radius, centre)
         }
 
-        Milestone.SHRUB -> drawCircle(
-            color = tint.copy(alpha = 0.55f),
-            radius = scale * 0.022f,
-            center = Offset(x, groundY - scale * 0.018f)
-        )
-
-        Milestone.CACTUS -> {
-            val h = scale * 0.075f
-            val w = scale * 0.016f
-            drawRoundRect(
-                color = tint.copy(alpha = 0.8f),
-                topLeft = Offset(x - w / 2, groundY - h),
-                size = androidx.compose.ui.geometry.Size(w, h),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2, w / 2)
-            )
-            drawRoundRect(
-                color = tint.copy(alpha = 0.8f),
-                topLeft = Offset(x + w * 0.6f, groundY - h * 0.75f),
-                size = androidx.compose.ui.geometry.Size(w * 0.7f, h * 0.42f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2, w / 2)
-            )
-        }
-
-        Milestone.OASIS -> drawOval(
-            color = Color(0xFF2F8F86).copy(alpha = 0.55f),
-            topLeft = Offset(x - scale * 0.06f, groundY - scale * 0.012f),
-            size = androidx.compose.ui.geometry.Size(scale * 0.12f, scale * 0.028f)
-        )
-
-        Milestone.PYRAMID -> {
-            val h = scale * 0.1f
-            val path = Path().apply {
-                moveTo(x, groundY - h)
-                lineTo(x + h * 0.8f, groundY)
-                lineTo(x - h * 0.8f, groundY)
-                close()
+        SandCanvas(
+            grid = grid,
+            tints = tints,
+            wallColor = Color.Transparent,
+            running = true,
+            gravity = Direction.S,
+            interactive = true,
+            modifier = Modifier.fillMaxSize(),
+            onBeforeStep = { sand ->
+                val index = poured[0]
+                if (index < schedule.size) {
+                    val batch = minOf(POUR_PER_FRAME, schedule.size - index)
+                    repeat(batch) { offset ->
+                        sand.pour(
+                            x = POUR_COLUMN,
+                            y = 1,
+                            amount = 1,
+                            tint = schedule[index + offset],
+                            spread = POUR_SPREAD,
+                            random = random
+                        )
+                    }
+                    poured[0] = index + batch
+                }
             }
-            drawPath(path, color = tint.copy(alpha = 0.7f))
-        }
+        )
     }
 }
 
-private const val SILHOUETTE_STEPS = 48
+/** Walls along the floor and both sides, so the pile has something to rest on. */
+private fun floorIt(grid: SandGrid) {
+    for (x in 0 until grid.width) grid.wall(x, grid.height - 1)
+    for (y in 0 until grid.height) {
+        grid.wall(0, y)
+        grid.wall(grid.width - 1, y)
+    }
+}
+
+/**
+ * The grains to pour, oldest stratum first so the earliest sessions end up at the
+ * bottom of the pile. Scaled to the dune's height so a long history fills the frame
+ * without overflowing it.
+ */
+private fun pourSchedule(desert: Desert): IntArray {
+    if (desert.isEmpty) return IntArray(0)
+
+    val capacity = (GRID_WIDTH * GRID_HEIGHT * MAX_FILL).roundToInt()
+    val total = (capacity * desert.height).roundToInt().coerceAtLeast(MIN_GRAINS)
+
+    val grains = ArrayList<Int>(total)
+    desert.strata.forEach { stratum ->
+        val count = (total * stratum.thickness).roundToInt()
+        // Two tints per sand, alternating, so a band is speckled rather than flat.
+        val first = stratum.sand.ordinal * 2 + 1
+        repeat(count) { index -> grains.add(if (index % 2 == 0) first else first + 1) }
+    }
+    return grains.toIntArray()
+}
+
+private const val GRID_WIDTH = 108
+private const val GRID_HEIGHT = 72
+
+/** Poured left of centre, so the dune's lee side faces the open half of the frame. */
+private const val POUR_COLUMN = GRID_WIDTH * 2 / 5
+private const val POUR_SPREAD = 3
+
+/** Fraction of the grid a full desert occupies. */
+private const val MAX_FILL = 0.55f
+
+/** Even one short session should leave something visible on the floor. */
+private const val MIN_GRAINS = 120
+
+/** Grains per frame; the pour should read as a pour, not a paste. */
+private const val POUR_PER_FRAME = 14

@@ -34,9 +34,16 @@ data class TimerCard(
     val isRunning: Boolean,
     val isPaused: Boolean,
     val isOvertime: Boolean,
-    val sessionsCompleted: Int
+    val sessionsCompleted: Int,
+    /** When the current session began, or null for a timer that is not in use. */
+    val sessionStartedAt: Long? = null
 ) {
     val isIdle: Boolean get() = !isRunning && !isPaused
+
+    /** How far through the allocation, unclamped: past 1 in overtime. */
+    val timerProgress: Float
+        get() = if (durationMillis <= 0) 0f
+        else (durationMillis - remainingMillis).toFloat() / durationMillis
 }
 
 data class HomeState(
@@ -206,6 +213,7 @@ private fun TimerDefinition.toCard(active: ActiveTimer?): TimerCard {
         isRunning = live?.isRunning == true,
         isPaused = live?.isPaused == true,
         isOvertime = live?.isOvertime == true,
-        sessionsCompleted = sessionsCompleted
+        sessionsCompleted = sessionsCompleted,
+        sessionStartedAt = live?.startedAt
     )
 }

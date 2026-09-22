@@ -1,13 +1,16 @@
 package com.hourglass.service
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.hourglass.MainActivity
 import com.hourglass.R
@@ -77,9 +80,15 @@ class DayRemainingNotifier @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
-        // Without POST_NOTIFICATIONS this quietly does nothing, which is correct: the
-        // reminder is a courtesy, not a dependency.
-        runCatching {
+        // Checked inline rather than behind a helper: declining the permission should
+        // mean nothing happens, not an exception thrown and swallowed every quarter
+        // hour — and lint only credits the guard when it can see it from the call.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
     }

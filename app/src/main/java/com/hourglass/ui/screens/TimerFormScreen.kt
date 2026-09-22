@@ -59,7 +59,8 @@ import com.hourglass.core.TimeFormat
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRef
 import com.hourglass.core.TimerSand
-import com.hourglass.ui.components.HourglassGlass
+import com.hourglass.ui.components.SandDetail
+import com.hourglass.ui.components.SandGlass
 import com.hourglass.ui.components.HourglassTopBar
 import com.hourglass.ui.components.Stepper
 import com.hourglass.ui.theme.HourglassTheme
@@ -74,6 +75,9 @@ import com.hourglass.viewmodel.HourglassViewModel
  * Durations and names are constrained rather than free text — there is no way to
  * enter something the timer cannot honour.
  */
+/** Part-drained, so the preview glass is visibly running rather than merely full. */
+private const val PREVIEW_PROGRESS = 0.3f
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TimerFormScreen(
@@ -131,12 +135,15 @@ fun TimerFormScreen(
         ) {
             Spacer(Modifier.height(Spacing.sm))
 
-            HourglassGlass(
-                progress = 0.32f,
-                sandColor = colour,
+            // A live glass, in the sand being chosen: the preview is the thing.
+            SandGlass(
+                progress = PREVIEW_PROGRESS,
+                sand = colour,
                 running = true,
                 overtime = false,
-                modifier = Modifier.size(width = 96.dp, height = 128.dp)
+                detail = SandDetail.MEDIUM,
+                key = sand,
+                modifier = Modifier.size(width = 120.dp, height = 160.dp)
             )
 
             Spacer(Modifier.height(Spacing.sm))

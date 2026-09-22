@@ -3,11 +3,10 @@ package com.hourglass.ui.preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,18 +14,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import com.hourglass.core.DayTotal
 import com.hourglass.core.Desert
 import com.hourglass.core.SessionSummary
-import com.hourglass.core.TileDetail
+import com.hourglass.core.TileLayout
+import com.hourglass.core.Treemap
 import com.hourglass.core.TimeOfDay
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRef
 import com.hourglass.core.TimerSand
-import com.hourglass.ui.components.BedtimeTile
+import com.hourglass.ui.components.BedtimeBar
 import com.hourglass.ui.components.DuneCanvas
 import com.hourglass.ui.components.FocusColumns
-import com.hourglass.ui.components.HourglassGlass
+import com.hourglass.ui.components.SandDetail
+import com.hourglass.ui.components.SandGlass
 import com.hourglass.ui.components.TimerTile
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
@@ -74,88 +76,66 @@ private fun PreviewSurface(dark: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-/** The wall at three densities, which is the thing most worth eyeballing. */
+/** The treemap at a few counts, which is the thing most worth eyeballing. */
 @Composable
-private fun Wall(count: Int, detail: TileDetail) {
+private fun Wall(count: Int) {
     val cards = List(count) { index ->
         sample(
             id = index + 1L,
             name = listOf("Flashcards", "Question bank", "Essay", "Reading", "Email")[index % 5],
             sand = TimerSand.entries[index % TimerSand.entries.size],
+            duration = listOf(2L, 1L, 3L, 1L, 4L)[index % 5] * 1_800_000L,
             progress = (index % 5) / 5f,
             running = index == 1
         )
     }
-    val columns = when {
-        count <= 4 -> 2
-        count <= 9 -> 3
-        else -> 4
-    }
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-    ) {
-        cards.chunked(columns).forEach { row ->
-            Row(
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val cells = Treemap.squarify(
+            items = cards,
+            width = maxWidth.value,
+            height = maxHeight.value
+        ) { it.durationMillis / 60_000f }
+        cells.forEach { cell ->
+            TimerTile(
+                card = cell.item,
+                detail = TileLayout.detailFor(min(cell.width.dp, cell.height.dp).value),
+                onOpen = {},
+                onEdit = {},
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-            ) {
-                row.forEach { card ->
-                    TimerTile(
-                        card = card,
-                        detail = detail,
-                        onOpen = {},
-                        onEdit = {},
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-                }
-            }
+                    .offset(x = cell.x.dp, y = cell.y.dp)
+                    .size(width = cell.width.dp, height = cell.height.dp)
+                    .padding(3.dp)
+            )
         }
     }
 }
 
-@Preview(name = "Wall, four tiles — light", widthDp = 380, heightDp = 620)
+@Preview(name = "Wall, three timers — light", widthDp = 380, heightDp = 560)
 @Composable
-private fun WallFourLight() = PreviewSurface(dark = false) { Wall(4, TileDetail.FULL) }
+private fun WallFewLight() = PreviewSurface(dark = false) { Wall(3) }
 
-@Preview(name = "Wall, four tiles — dark", widthDp = 380, heightDp = 620)
+@Preview(name = "Wall, three timers — dark", widthDp = 380, heightDp = 560)
 @Composable
-private fun WallFourDark() = PreviewSurface(dark = true) { Wall(4, TileDetail.FULL) }
+private fun WallFewDark() = PreviewSurface(dark = true) { Wall(3) }
 
-@Preview(name = "Wall, nine tiles — light", widthDp = 380, heightDp = 620)
+@Preview(name = "Wall, eight timers — dark", widthDp = 380, heightDp = 560)
 @Composable
-private fun WallNineLight() = PreviewSurface(dark = false) { Wall(9, TileDetail.COMPACT) }
+private fun WallManyDark() = PreviewSurface(dark = true) { Wall(8) }
 
-@Preview(name = "Wall, sixteen tiles — dark", widthDp = 380, heightDp = 620)
+@Preview(name = "Wall, twenty timers — dark", widthDp = 380, heightDp = 560)
 @Composable
-private fun WallManyDark() = PreviewSurface(dark = true) { Wall(16, TileDetail.MINIMAL) }
+private fun WallCrowdedDark() = PreviewSurface(dark = true) { Wall(20) }
 
-@Preview(name = "Bedtime tile — light", widthDp = 200, heightDp = 200)
+@Preview(name = "Bedtime bar — light", widthDp = 380, heightDp = 110)
 @Composable
-private fun BedtimeTileLight() = PreviewSurface(dark = false) {
-    BedtimeTile(
-        bedtime = TimeOfDay(22, 30),
-        minutesUntil = 139,
-        detail = TileDetail.FULL,
-        onClick = {},
-        modifier = Modifier.fillMaxSize()
-    )
+private fun BedtimeBarLight() = PreviewSurface(dark = false) {
+    BedtimeBar(bedtime = TimeOfDay(22, 30), minutesUntil = 139, onClick = {})
 }
 
-@Preview(name = "Bedtime tile, winding down — dark", widthDp = 200, heightDp = 200)
+@Preview(name = "Bedtime bar, winding down — dark", widthDp = 380, heightDp = 110)
 @Composable
-private fun BedtimeTileDark() = PreviewSurface(dark = true) {
-    BedtimeTile(
-        bedtime = TimeOfDay(22, 30),
-        minutesUntil = 42,
-        detail = TileDetail.FULL,
-        onClick = {},
-        modifier = Modifier.fillMaxSize()
-    )
+private fun BedtimeBarDark() = PreviewSurface(dark = true) {
+    BedtimeBar(bedtime = TimeOfDay(22, 30), minutesUntil = 42, onClick = {})
 }
 
 private fun summary(day: Long, name: String, sand: TimerSand, minutes: Long) = SessionSummary(
@@ -225,11 +205,13 @@ private fun SandsDark() = PreviewSurface(dark = true) { Sands() }
 private fun Sands() {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         HourglassTheme.colors.allSands().forEach { (_, colour) ->
-            HourglassGlass(
+            SandGlass(
                 progress = 0.4f,
-                sandColor = colour,
+                sand = colour,
                 running = false,
                 overtime = false,
+                detail = SandDetail.GLYPH,
+                key = colour,
                 modifier = Modifier.size(width = 38.dp, height = 50.dp)
             )
         }

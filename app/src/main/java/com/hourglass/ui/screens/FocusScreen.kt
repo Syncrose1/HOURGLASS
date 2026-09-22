@@ -23,17 +23,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.hourglass.R
-import com.hourglass.core.Direction
-import com.hourglass.core.HourglassSim
-import com.hourglass.core.SandGrid
 import com.hourglass.core.TimeFormat
-import com.hourglass.ui.components.SandCanvas
-import com.hourglass.ui.components.rememberTiltDirection
+import com.hourglass.ui.components.lerp
+import com.hourglass.ui.world.WorldRegistry
+import com.hourglass.ui.world.WorldView
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
 import com.hourglass.viewmodel.TimerCard
@@ -58,14 +57,6 @@ fun FocusScreen(
 ) {
     val colors = HourglassTheme.colors
     val sand = colors.sand(card.sand)
-    val overtimeSand = colors.overtime
-
-    val sim = remember(card.ref) {
-        HourglassSim(SandGrid(GRID_WIDTH, GRID_HEIGHT), neckHalfWidth = 1)
-            .also { it.fill(tint = SAND_TINT) }
-    }
-
-    val tilt by rememberTiltDirection(enabled = true)
 
     val glow by animateFloatAsState(
         targetValue = if (card.isRunning) 1f else 0.4f,
@@ -78,12 +69,14 @@ fun FocusScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // Every stop is opaque: an alpha here let the tile wall show straight
+            // through the focus view, which is the one screen that must be alone.
             .background(
                 Brush.verticalGradient(
                     listOf(
                         colors.backdropTop,
                         colors.backdrop,
-                        sand.copy(alpha = 0.10f * glow)
+                        lerp(colors.backdrop, sand, 0.10f * glow)
                     )
                 )
             )
@@ -99,7 +92,7 @@ fun FocusScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(Spacing.xl),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -114,30 +107,28 @@ fun FocusScreen(
 
             Spacer(Modifier.height(Spacing.lg))
 
-            SandCanvas(
-                grid = sim.grid,
-                tints = listOf(sand, overtimeSand),
-                wallColor = colors.glass.copy(alpha = 0.22f),
+            // The world the timer is building. It fills the screen: this is the
+            // thing to watch, and the only thing on it.
+            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis) {
+                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis)
+            }
+            WorldView(
+                session = session,
+                mineral = sand,
                 running = card.isRunning,
-                gravity = if (card.isRunning) tilt else Direction.S,
-                onBeforeStep = { grid ->
-                    if (card.isOvertime) {
-                        // The glass does not stop when the allocation does: overtime
-                        // keeps raining into the lower chamber, in its own colour.
-                        grid.pour(
-                            x = grid.width / 2,
-                            y = sim.neckRow + 1,
-                            amount = OVERTIME_POUR_PER_FRAME,
-                            tint = OVERTIME_TINT,
-                            spread = 2
-                        )
-                    } else {
-                        sim.syncTo(card.progress)
-                    }
-                },
+                timerProgress = card.timerProgress,
                 modifier = Modifier
-                    .fillMaxWidth(0.72f)
                     .weight(1f)
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+            )
+
+            Spacer(Modifier.height(Spacing.sm))
+
+            Text(
+                text = session.world.objective,
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.textMuted
             )
 
             Spacer(Modifier.height(Spacing.lg))
@@ -158,21 +149,18 @@ fun FocusScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textMuted
             )
-        }
 
-        // The one control. Quiet, because finishing should be a decision rather than
-        // the thing your thumb lands on.
-        TextButton(
-            onClick = onFinish,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = Spacing.xl)
-        ) {
-            Text(
-                text = stringResource(R.string.finish_session),
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.textSecondary
-            )
+            Spacer(Modifier.height(Spacing.lg))
+
+            // The one control, and the last thing in the column rather than floating
+            // over it — absolute positioning had it landing on top of the clock.
+            TextButton(onClick = onFinish) {
+                Text(
+                    text = stringResource(R.string.finish_session),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.textSecondary
+                )
+            }
         }
     }
 }
@@ -181,10 +169,5 @@ fun FocusScreen(
  * Grid resolution for the focus glass. Coarse enough that a grain reads as a grain at
  * arm's length, fine enough that the heaps look like sand rather than gravel.
  */
-private const val GRID_WIDTH = 54
-private const val GRID_HEIGHT = 96
-private const val SAND_TINT = 1
-private const val OVERTIME_TINT = 2
-
-/** A trickle, not a flood: overtime should nag, not bury the glass. */
-private const val OVERTIME_POUR_PER_FRAME = 1
+private const val GRID_WIDTH = 62
+private const val GRID_HEIGHT = 108

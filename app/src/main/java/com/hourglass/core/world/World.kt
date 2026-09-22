@@ -1,0 +1,88 @@
+package com.hourglass.core.world
+
+import kotlin.random.Random
+
+/**
+ * A little world that runs for the length of a timer.
+ *
+ * The world is genuinely simulated: nothing about what happens in it is scripted, and
+ * no two runs are the same. What is governed is only the *tempo* — see [WorldPacer].
+ */
+interface World {
+    val width: Int
+    val height: Int
+
+    /** Palette indices, row-major, one per cell. Index 0 is empty. */
+    val cells: IntArray
+
+    /** How much of what this world is trying to do is done, `0f..1f`. */
+    val objectiveProgress: Float
+
+    /** A short statement of what the world is working toward, for the UI. */
+    val objective: String
+
+    /**
+     * Advances one tick.
+     *
+     * [effort] scales how much the world's inhabitants get done — above 1 they work
+     * harder, below 1 they dawdle. It never changes *what* they decide to do.
+     */
+    fun step(effort: Float, random: Random)
+}
+
+/**
+ * Ties an emergent world to a clock without scripting it.
+ *
+ * This is the whole trick, and it is worth being precise about: the simulation is
+ * never told what to do or when to finish. It is told how hard to work. Each tick the
+ * pacer compares how far along the world's objective is against how far along the
+ * timer is, and nudges the inhabitants' effort up or down to close the gap.
+ *
+ * So everything that makes a run interesting stays free — where the tunnels go, which
+ * seams get found, which miner gets buried, whether the dam gives way at one end or
+ * the middle. Only the rate is governed. A world that genuinely cannot finish simply
+ * arrives at the end less complete, which is a truthful outcome rather than a broken
+ * one.
+ *
+ * The target at the timer's end is deliberately short of complete, so there is always
+ * something left for overtime to buy.
+ */
+class WorldPacer(
+    /** Where the objective should be when the timer runs out. */
+    val completionTarget: Float = DEFAULT_COMPLETION_TARGET,
+    /** How hard the pacer corrects. Higher is twitchier. */
+    private val gain: Float = 5f,
+    private val minEffort: Float = 0.05f,
+    private val maxEffort: Float = 8f
+) {
+
+    /**
+     * Where the objective ought to be at [timerProgress], which runs past 1 into
+     * overtime. Linear to [completionTarget] while the timer runs, then asymptotic
+     * toward complete — overtime keeps paying, with diminishing returns.
+     */
+    fun desiredProgress(timerProgress: Float): Float {
+        val t = timerProgress.coerceAtLeast(0f)
+        if (t <= 1f) return t * completionTarget
+        val overtime = t - 1f
+        val remaining = 1f - completionTarget
+        return completionTarget + remaining * (1f - Math.exp(-(overtime * OVERTIME_RATE).toDouble()).toFloat())
+    }
+
+    /** How hard the world should work this tick. */
+    fun effortFor(timerProgress: Float, objectiveProgress: Float): Float {
+        val error = desiredProgress(timerProgress) - objectiveProgress
+        return (1f + gain * error).coerceIn(minEffort, maxEffort)
+    }
+
+    companion object {
+        /**
+         * Short of complete on purpose: arriving at exactly 100% as the clock runs out
+         * would make the ending feel scripted, and leaves overtime nothing to offer.
+         */
+        const val DEFAULT_COMPLETION_TARGET = 0.85f
+
+        /** How fast overtime closes the remaining gap. */
+        private const val OVERTIME_RATE = 1.6f
+    }
+}

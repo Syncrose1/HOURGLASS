@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 and below. Timers and settings restore; nothing else is kept. -->
+<!--
+  Android 11 and below. Naming an include makes everything else excluded already, so
+  the database is the whole list; an explicit sharedpref exclude was both redundant
+  and outside any included path.
+-->
 <full-backup-content>
     <include domain="database" path="." />
-    <exclude domain="sharedpref" path="." />
 </full-backup-content>
