@@ -8,7 +8,13 @@ package com.hourglass.core.world
  * Pure data in the core, so the app, the snapshot tool, and any other renderer that
  * ever hosts these worlds all draw them the same way.
  */
-class WorldPalette(val colours: IntArray, val bright: Set<Int>, val sky: Int)
+class WorldPalette(
+    val colours: IntArray,
+    val bright: Set<Int>,
+    val sky: Int,
+    /** How much the bottom of the world darkens; none for a world seen from above. */
+    val depthShading: Float = Palettes.DEPTH_DARKENING
+)
 
 object Palettes {
 
@@ -16,7 +22,33 @@ object Palettes {
     fun forKind(kind: WorldKind, accent: Int): WorldPalette = when (kind) {
         WorldKind.MINE -> mine(accent)
         WorldKind.RIVER -> river(accent)
+        WorldKind.ANTS -> ants(accent)
     }
+
+    /**
+     * Dry ground at midday, seen from above. The food is the timer's colour, and so is
+     * what the ants carry home. Trails are ground worn and darkened by traffic.
+     */
+    private fun ants(accent: Int) = WorldPalette(
+        colours = IntArray(AntMat.COUNT).also {
+            it[AntMat.GROUND] = 0xFFC9A571.toInt()
+            it[AntMat.GROUND_DARK] = 0xFFBE9964.toInt()
+            it[AntMat.PEBBLE] = 0xFF8C8177.toInt()
+            it[AntMat.PEBBLE_LIGHT] = 0xFFA99E92.toInt()
+            it[AntMat.GRASS] = 0xFF7D8C45.toInt()
+            it[AntMat.FOOD] = accent
+            it[AntMat.FOOD_BRIGHT] = mix(accent, WHITE, 0.35f)
+            it[AntMat.NEST] = 0xFF2A1D14.toInt()
+            it[AntMat.MOUND] = 0xFFA87E4C.toInt()
+            it[AntMat.TRAIL] = 0xFFA68258.toInt()
+            it[AntMat.TRAIL_FAINT] = 0xFFB69160.toInt()
+            it[AntMat.ANT] = 0xFF2B1A12.toInt()
+            it[AntMat.ANT_CARRYING] = mix(accent, BLACK, 0.2f)
+        },
+        bright = setOf(AntMat.ANT, AntMat.ANT_CARRYING, AntMat.FOOD, AntMat.FOOD_BRIGHT),
+        sky = -1,
+        depthShading = 0f
+    )
 
     /**
      * The underground is dark in both themes — it is underground. The seams are the one
@@ -90,7 +122,7 @@ object Palettes {
      * One palette per row, darkening toward the bottom so the ground reads as depth.
      * Bright slots are exempt: they are what you look for.
      */
-    fun shadedByDepth(palette: WorldPalette, height: Int, darkening: Float = DEPTH_DARKENING): IntArray {
+    fun shadedByDepth(palette: WorldPalette, height: Int, darkening: Float = palette.depthShading): IntArray {
         val slots = palette.colours.size
         val table = IntArray(height * slots)
         for (y in 0 until height) {

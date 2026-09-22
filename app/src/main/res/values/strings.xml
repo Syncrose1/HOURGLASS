@@ -63,6 +63,7 @@
     <!-- Worlds -->
     <string name="world_mine">Mine</string>
     <string name="world_river">River</string>
+    <string name="world_ants">Colony</string>
 
     <!-- Focus -->
     <string name="tap_to_pause">Tap anywhere to pause</string>

@@ -9,7 +9,10 @@ enum class WorldKind {
     MINE,
 
     /** Beavers dismantle a logjam and let a held-back lake flow down its valley. */
-    RIVER;
+    RIVER,
+
+    /** A colony forages a patch of ground from above, trails and all. */
+    ANTS;
 
     /** The value persisted with a timer. */
     val token: String get() = name.lowercase()

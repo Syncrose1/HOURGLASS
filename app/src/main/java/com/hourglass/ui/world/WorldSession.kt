@@ -1,6 +1,7 @@
 package com.hourglass.ui.world
 
 import com.hourglass.core.TimerRef
+import com.hourglass.core.world.AntWorld
 import com.hourglass.core.world.MineWorld
 import com.hourglass.core.world.RiverWorld
 import com.hourglass.core.world.World
@@ -90,10 +91,12 @@ object WorldRegistry {
     }
 
     private fun create(kind: WorldKind, seed: Long, durationMillis: Long): WorldSession {
-        val richness = MineWorld.richnessFor(durationMillis / 60_000f)
+        val minutes = durationMillis / 60_000f
+        val richness = MineWorld.richnessFor(minutes)
         val world: World = when (kind) {
             WorldKind.MINE -> MineWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, richness)
             WorldKind.RIVER -> RiverWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, richness * RIVER_SCALE)
+            WorldKind.ANTS -> AntWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, AntWorld.quotaFor(minutes))
         }
         return WorldSession(world)
     }
