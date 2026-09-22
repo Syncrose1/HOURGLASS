@@ -1,6 +1,5 @@
 package com.hourglass.core.world
 
-import java.util.PriorityQueue
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -71,7 +70,7 @@ class MineWorld(
     seed: Long,
     /** Roughly how many loads of mineral to bury. Longer timers get richer ground. */
     private val richness: Int = DEFAULT_RICHNESS
-) : World {
+) : World, Site {
 
     override val cells = IntArray(width * height)
 
@@ -79,7 +78,7 @@ class MineWorld(
     private val damage = FloatArray(width * height)
 
     private val generator = Random(seed)
-    private val miners = mutableListOf<Miner>()
+    private lateinit var crew: Crew
 
     private var mineralsTotal = 0
     private var mineralsDelivered = 0
@@ -89,18 +88,15 @@ class MineWorld(
 
     private var settleCounter = 0
 
-    // Scratch space for route planning, allocated once.
-    private val dist = IntArray(width * height)
-    private val prev = IntArray(width * height)
-    private val frontier = PriorityQueue<Long>()
-
     override val objectiveProgress: Float
         get() = if (mineralsTotal == 0) 1f
         else (mineralsDelivered.toFloat() / mineralsTotal).coerceAtMost(1f)
 
     override val objective: String get() = "$mineralsDelivered of $mineralsTotal hauled"
 
-    val minerCount: Int get() = miners.size
+    override val kind: WorldKind get() = WorldKind.MINE
+
+    val minerCount: Int get() = crew.workers.size
     val totalSeams: Int get() = mineralsTotal
     val hauledSeams: Int get() = mineralsDelivered
 
@@ -216,28 +212,19 @@ class MineWorld(
 
     private fun spawnMiners(surface: IntArray) {
         val count = (width / 16).coerceIn(2, 6)
-        repeat(count) { index ->
-            val x = (cartX - 2 + index * 2 - count / 2).coerceIn(1, width - 2)
-            miners += Miner(x = x, y = (surface[x] - 1).coerceAtLeast(0))
-        }
+        crew = Crew(
+            site = this,
+            spawns = List(count) { index ->
+                val x = (cartX - 2 + index * 2 - count / 2).coerceIn(1, width - 2)
+                x to (surface[x] - 1).coerceAtLeast(0)
+            }
+        )
     }
 
     // --- simulation -------------------------------------------------------
 
     override fun step(effort: Float, random: Random) {
-        miners.forEach { miner ->
-            // Effort buys action points; a miner acts whenever it has banked one.
-            miner.banked += effort * MINER_RATE
-            var actions = 0
-            while (miner.banked >= 1f && actions < MAX_ACTIONS_PER_TICK) {
-                miner.banked -= 1f
-                actions++
-                act(miner, random)
-            }
-            // A crew that cannot spend what it earns should not hoard a burst for later.
-            if (miner.banked > MAX_ACTIONS_PER_TICK) miner.banked = MAX_ACTIONS_PER_TICK.toFloat()
-        }
-
+        crew.step(effort, random)
         settleCounter++
         if (settleCounter >= SETTLE_EVERY) {
             settleCounter = 0
@@ -245,78 +232,51 @@ class MineWorld(
         }
     }
 
-    private fun act(miner: Miner, random: Random) {
-        // Gravity: an open cell with nothing to stand on or cling to drops you —
-        // unless the miner is on a rope, following a climbing route.
-        val here = index(miner.x, miner.y)
-        if (!miner.climbing && Mat.isOpen(cells[here]) && !supported(miner.x, miner.y) &&
-            miner.y + 1 < height && Mat.isOpen(cells[here + width])
-        ) {
-            miner.y++
-            endPath(miner)
-            return
-        }
+    // --- the crew's view of the ground ------------------------------------
 
-        if (miner.carrying && nearCart(miner.x, miner.y)) {
-            deliver(miner, random)
-            return
-        }
+    override fun isOpen(index: Int): Boolean = Mat.isOpen(cells[index])
 
-        val path = miner.path ?: (plan(miner, climbing = false) ?: plan(miner, climbing = true)?.also {
-            miner.climbing = true
-        })?.also {
-            miner.path = it
-            miner.pathPos = 0
-        }
-        if (path == null) {
-            wander(miner, random)
-            return
-        }
-
-        val next = path[miner.pathPos]
-        val nx = next % width
-        val ny = next / width
-        if (abs(nx - miner.x) + abs(ny - miner.y) != 1) {
-            miner.path = null
-            return
-        }
-
-        val cell = cells[next]
-        when {
-            Mat.isOpen(cell) -> {
-                if (miner.climbing || ny > miner.y || supported(nx, ny)) {
-                    miner.x = nx
-                    miner.y = ny
-                    miner.pathPos++
-                    if (miner.pathPos >= path.size) endPath(miner)
-                } else {
-                    endPath(miner)
-                }
-            }
-            Mat.isMineral(cell) && miner.carrying -> endPath(miner)
-            Mat.isDiggable(cell) -> swing(miner, next, random)
-            else -> endPath(miner)
-        }
+    /**
+     * An open cell is standable if there is ground beneath it or real ground beside it
+     * to cling to. The edge of the frame does not count: treating it as a wall left
+     * miners hanging off the side of the picture in mid-air.
+     */
+    override fun supports(x: Int, y: Int): Boolean {
+        if (y >= height - 1) return true
+        return ground(x, y + 1) ||
+            ground(x - 1, y) || ground(x + 1, y) ||
+            ground(x - 1, y + 1) || ground(x + 1, y + 1)
     }
 
-    private fun endPath(miner: Miner) {
-        miner.path = null
-        miner.climbing = false
+    private fun ground(x: Int, y: Int): Boolean =
+        x in 0 until width && y in 0 until height && !Mat.isOpen(cells[y * width + x])
+
+    override fun breakCost(index: Int, carrying: Boolean): Int {
+        val cell = cells[index]
+        if (Mat.isMineral(cell) && carrying) return -1
+        if (!Mat.isDiggable(cell)) return -1
+        return 1 + (Mat.hardness(cell) * DIG_WEIGHT).toInt()
     }
+
+    override fun isQuarry(index: Int): Boolean = Mat.isMineral(cells[index])
+
+    override fun isDropOff(x: Int, y: Int): Boolean =
+        x in (cartX - 2)..(cartX + 3) && abs(y - cartY) <= 1
 
     /** One swing of the pick. The cell gives way once the damage passes its hardness. */
-    private fun swing(miner: Miner, index: Int, random: Random) {
+    override fun work(index: Int, random: Random): Boolean {
         val cell = cells[index]
         damage[index] += PICK_POWER
-        if (damage[index] < Mat.hardness(cell)) return
-
+        if (damage[index] < Mat.hardness(cell)) return false
         damage[index] = 0f
         cells[index] = Mat.AIR
         shore(index, random)
-        if (Mat.isMineral(cell)) {
-            miner.carrying = true
-            endPath(miner)
-        }
+        return true
+    }
+
+    override fun unload(random: Random) {
+        mineralsDelivered++
+        stockpile(random)
     }
 
     /**
@@ -340,13 +300,6 @@ class MineWorld(
                 cells[neighbour] = Mat.SAND_PACKED
             }
         }
-    }
-
-    private fun deliver(miner: Miner, random: Random) {
-        miner.carrying = false
-        endPath(miner)
-        mineralsDelivered++
-        stockpile(random)
     }
 
     /**
@@ -380,123 +333,6 @@ class MineWorld(
         var y = 0
         while (y < height - 1 && Mat.isOpen(cells[index(column, y + 1)])) y++
         return if (y >= 1 && Mat.isOpen(cells[index(column, y)])) y else null
-    }
-
-    private fun nearCart(x: Int, y: Int): Boolean =
-        x in (cartX - 2)..(cartX + 3) && abs(y - cartY) <= 1
-
-    /**
-     * Routes from the miner to the nearest goal by effort — open workings are cheap,
-     * soft ground costs a few swings, rock costs many — so the crew reuses tunnels,
-     * shares shafts, and only cuts new ground where it has to.
-     */
-    private fun plan(miner: Miner, climbing: Boolean): IntArray? {
-        val start = index(miner.x, miner.y)
-        dist.fill(Int.MAX_VALUE)
-        frontier.clear()
-        dist[start] = 0
-        frontier.add(encode(0, start))
-
-        var expansions = 0
-        while (frontier.isNotEmpty() && expansions < MAX_EXPANSIONS) {
-            val entry = frontier.poll()
-            val cost = (entry ushr 32).toInt()
-            val at = (entry and 0xffffffffL).toInt()
-            if (cost > dist[at]) continue
-            expansions++
-
-            if (at != start && isGoal(miner, at)) return reconstruct(start, at)
-
-            val x = at % width
-            val y = at / width
-            for (direction in 0 until 4) {
-                val nx = x + DX[direction]
-                val ny = y + DY[direction]
-                if (nx !in 0 until width || ny !in 0 until height) continue
-                val next = ny * width + nx
-                val step = stepCost(miner, y, nx, ny, next, climbing)
-                if (step < 0) continue
-                val total = cost + step
-                if (total < dist[next]) {
-                    dist[next] = total
-                    prev[next] = at
-                    frontier.add(encode(total, next))
-                }
-            }
-        }
-        return null
-    }
-
-    private fun isGoal(miner: Miner, index: Int): Boolean {
-        val cell = cells[index]
-        return if (miner.carrying) {
-            Mat.isOpen(cell) && nearCart(index % width, index / width)
-        } else {
-            Mat.isMineral(cell)
-        }
-    }
-
-    private fun stepCost(
-        miner: Miner,
-        y: Int,
-        nx: Int,
-        ny: Int,
-        next: Int,
-        climbing: Boolean
-    ): Int {
-        val cell = cells[next]
-        return when {
-            Mat.isOpen(cell) -> when {
-                ny > y -> 1
-                supported(nx, ny) -> 1
-                // A rope costs more than a floor, so it is only used when needed.
-                climbing -> CLIMB_COST
-                else -> -1
-            }
-            Mat.isMineral(cell) -> if (miner.carrying) -1 else digCost(cell)
-            Mat.isDiggable(cell) -> digCost(cell)
-            else -> -1
-        }
-    }
-
-    private fun digCost(cell: Int): Int = 1 + (Mat.hardness(cell) * DIG_WEIGHT).toInt()
-
-    private fun reconstruct(start: Int, goal: Int): IntArray {
-        val reversed = ArrayList<Int>()
-        var at = goal
-        while (at != start) {
-            reversed.add(at)
-            at = prev[at]
-        }
-        reversed.reverse()
-        return reversed.toIntArray()
-    }
-
-    /**
-     * An open cell is standable if there is ground beneath it or real ground beside it
-     * to cling to. The edge of the frame does not count: treating it as a wall left
-     * miners hanging off the side of the picture in mid-air.
-     */
-    private fun supported(x: Int, y: Int): Boolean {
-        if (y >= height - 1) return true
-        return ground(x, y + 1) ||
-            ground(x - 1, y) || ground(x + 1, y) ||
-            ground(x - 1, y + 1) || ground(x + 1, y + 1)
-    }
-
-    private fun ground(x: Int, y: Int): Boolean =
-        x in 0 until width && y in 0 until height && !Mat.isOpen(cells[y * width + x])
-
-    private fun wander(miner: Miner, random: Random) {
-        val direction = random.nextInt(4)
-        val nx = miner.x + DX[direction]
-        val ny = miner.y + DY[direction]
-        if (nx in 0 until width && ny in 0 until height &&
-            Mat.isOpen(cells[index(nx, ny)]) && supported(nx, ny)
-        ) {
-            miner.x = nx
-            miner.y = ny
-        }
     }
 
     /**
@@ -559,9 +395,9 @@ class MineWorld(
     // --- rendering --------------------------------------------------------
 
     /** Copies the ground into [buffer] and draws the crew over it. */
-    fun renderInto(buffer: IntArray) {
+    override fun renderInto(buffer: IntArray) {
         cells.copyInto(buffer)
-        miners.forEach { miner ->
+        crew.workers.forEach { miner ->
             if (miner.x !in 0 until width || miner.y !in 0 until height) return@forEach
             val slot = if (miner.carrying) Mat.MINER_LOADED else Mat.MINER
             buffer[index(miner.x, miner.y)] = slot
@@ -572,17 +408,6 @@ class MineWorld(
 
     private fun index(x: Int, y: Int) = y * width + x
 
-    private fun encode(cost: Int, index: Int): Long = (cost.toLong() shl 32) or index.toLong()
-
-    private class Miner(
-        var x: Int,
-        var y: Int,
-        var carrying: Boolean = false,
-        var banked: Float = 0f,
-        var path: IntArray? = null,
-        var pathPos: Int = 0,
-        var climbing: Boolean = false
-    )
 
     companion object {
         /** Loads of mineral in a world of default size. */
@@ -590,12 +415,6 @@ class MineWorld(
 
         /** Where the ground starts, as a fraction of the frame. */
         private const val SURFACE_FRACTION = 0.2f
-
-        /** Actions per tick at effort 1. */
-        private const val MINER_RATE = 0.6f
-
-        /** Stops a big effort correction from teleporting the crew across the map. */
-        private const val MAX_ACTIONS_PER_TICK = 6
 
         /** Damage per swing. */
         private const val PICK_POWER = 1f
@@ -619,17 +438,9 @@ class MineWorld(
         /** Rows of sandstone under the cart. */
         private const val PAD_DEPTH = 3
 
-        /** Planner cost of a step through open air on a rope. */
-        private const val CLIMB_COST = 6
-
-        /** Bounds a single route search. */
-        private const val MAX_EXPANSIONS = 20_000
-
         /** Terrain settles less often than the crew acts; it is the expensive pass. */
         private const val SETTLE_EVERY = 3
 
-        private val DX = intArrayOf(0, 1, 0, -1)
-        private val DY = intArrayOf(-1, 0, 1, 0)
 
         /** Loads to bury for a timer of this length: longer timers get richer ground. */
         fun richnessFor(durationMinutes: Float): Int =

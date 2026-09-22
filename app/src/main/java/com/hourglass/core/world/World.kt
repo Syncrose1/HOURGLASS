@@ -3,6 +3,15 @@ package com.hourglass.core.world
 import kotlin.math.exp
 import kotlin.random.Random
 
+/** The kinds of world a timer can run. */
+enum class WorldKind {
+    /** A crew digs seams out of layered ground and hauls them to a cart. */
+    MINE,
+
+    /** Beavers dismantle a logjam and let a held-back lake flow down its valley. */
+    RIVER
+}
+
 /**
  * A little world that runs for the length of a timer.
  *
@@ -21,6 +30,12 @@ interface World {
 
     /** A short statement of what the world is working toward, for the UI. */
     val objective: String
+
+    /** Which kind of world this is; decides how the UI colours its cells. */
+    val kind: WorldKind
+
+    /** Copies the world into [buffer] with its inhabitants drawn in. */
+    fun renderInto(buffer: IntArray)
 
     /**
      * Advances one tick.
