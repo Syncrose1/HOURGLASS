@@ -3,6 +3,7 @@ package com.hourglass.data.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.hourglass.core.TimerSand
 
 /** One finished run, kept for habit feedback. */
 @Entity(
@@ -15,6 +16,8 @@ data class TimerSessionEntity(
     val taskId: Long,
     /** Denormalised so history survives the timer being archived or renamed. */
     val taskName: String,
+    /** Denormalised alongside the name, for the same reason. */
+    val colour: String = TimerSand.DEFAULT.token,
     val isQuicksand: Boolean,
     val plannedDurationMillis: Long,
     val elapsedMillis: Long,

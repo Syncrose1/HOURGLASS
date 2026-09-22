@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -54,24 +56,28 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.hourglass.R
 import com.hourglass.core.TimeFormat
 import com.hourglass.core.TimerKind
+import com.hourglass.core.TimerRef
+import com.hourglass.core.TimerSand
 import com.hourglass.ui.components.HourglassGlass
 import com.hourglass.ui.components.HourglassTopBar
 import com.hourglass.ui.components.Stepper
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
-import com.hourglass.ui.theme.TimerPalette
-import com.hourglass.ui.util.toHex
 import com.hourglass.viewmodel.HourglassViewModel
 
 /**
- * Creating a timer, with a live preview of the thing being made. The old form asked for
- * a name, two free-text numbers and a colour with no indication of what any of it would
- * look like; here the glass at the top is the actual card art, in the chosen colour.
+ * One form for creating and for editing.
+ *
+ * The glass at the top is the real card art in the chosen sand, so the choice is made
+ * against the thing being made rather than against a row of abstract swatches.
+ * Durations and names are constrained rather than free text — there is no way to
+ * enter something the timer cannot honour.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddTimerScreen(
+fun TimerFormScreen(
     onDone: () -> Unit,
+    editing: TimerRef? = null,
     viewModel: HourglassViewModel = hiltViewModel()
 ) {
     val colors = HourglassTheme.colors
@@ -79,18 +85,36 @@ fun AddTimerScreen(
     var name by remember { mutableStateOf("") }
     var hours by remember { mutableIntStateOf(1) }
     var minutes by remember { mutableIntStateOf(0) }
-    var colour by remember { mutableStateOf(TimerPalette.first()) }
-    var kind by remember { mutableStateOf(TimerKind.TASK) }
+    var sand by remember { mutableStateOf(TimerSand.DEFAULT) }
+    var kind by remember { mutableStateOf(editing?.kind ?: TimerKind.TASK) }
     var showNameError by remember { mutableStateOf(false) }
+    var loaded by remember { mutableStateOf(editing == null) }
 
+    LaunchedEffect(editing) {
+        val ref = editing ?: return@LaunchedEffect
+        val definition = viewModel.definition(ref)
+        if (definition != null) {
+            name = definition.name
+            hours = (definition.durationMillis / 3_600_000L).toInt()
+            minutes = ((definition.durationMillis % 3_600_000L) / 60_000L).toInt()
+            sand = definition.sand
+            kind = ref.kind
+        }
+        loaded = true
+    }
+
+    val colour = colors.sand(sand)
     val durationMillis = (hours * 3_600L + minutes * 60L) * 1_000L
-    val canCreate = name.isNotBlank() && durationMillis > 0
+    val canSubmit = loaded && name.isNotBlank() && durationMillis > 0
+    val onColour = if (colour.luminance() > 0.55f) colors.textPrimary else Color.White
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             HourglassTopBar(
-                title = stringResource(R.string.new_timer),
+                title = stringResource(
+                    if (editing == null) R.string.new_timer else R.string.edit_timer
+                ),
                 onBack = onDone
             )
         }
@@ -124,9 +148,12 @@ fun AddTimerScreen(
 
             Spacer(Modifier.height(Spacing.xl))
 
-            KindSelector(selected = kind, onSelect = { kind = it }, accent = colour)
-
-            Spacer(Modifier.height(Spacing.xl))
+            // Which family a timer belongs to is part of its identity, so it is fixed
+            // once created — changing it would orphan the timer's session history.
+            if (editing == null) {
+                KindSelector(selected = kind, onSelect = { kind = it }, accent = colour)
+                Spacer(Modifier.height(Spacing.xl))
+            }
 
             OutlinedTextField(
                 value = name,
@@ -167,13 +194,28 @@ fun AddTimerScreen(
 
             FieldLabel(stringResource(R.string.duration))
             Spacer(Modifier.height(Spacing.md))
-            DurationPicker(
-                hours = hours,
-                minutes = minutes,
-                accent = colour,
-                onHoursChange = { hours = it },
-                onMinutesChange = { minutes = it }
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+            ) {
+                Stepper(
+                    value = hours,
+                    label = stringResource(R.string.hours),
+                    range = 0..23,
+                    accent = colour,
+                    onChange = { hours = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Stepper(
+                    value = minutes,
+                    label = stringResource(R.string.minutes),
+                    range = 0..55,
+                    step = 5,
+                    accent = colour,
+                    onChange = { minutes = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             Spacer(Modifier.height(Spacing.xl))
 
@@ -184,11 +226,11 @@ fun AddTimerScreen(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
-                TimerPalette.forEach { swatch ->
-                    ColourSwatch(
-                        colour = swatch,
-                        selected = swatch == colour,
-                        onSelect = { colour = swatch }
+                colors.allSands().forEach { (candidate, swatch) ->
+                    SandSwatch(
+                        swatch = swatch,
+                        selected = candidate == sand,
+                        onSelect = { sand = candidate }
                     )
                 }
             }
@@ -197,29 +239,36 @@ fun AddTimerScreen(
 
             Button(
                 onClick = {
-                    if (!canCreate) {
+                    if (!canSubmit) {
                         showNameError = name.isBlank()
                         return@Button
                     }
-                    viewModel.create(kind, name, hours, minutes, colour.toHex())
+                    if (editing == null) {
+                        viewModel.create(kind, name, hours, minutes, sand)
+                    } else {
+                        viewModel.update(editing, name, hours, minutes, sand)
+                    }
                     onDone()
                 },
-                enabled = canCreate,
+                enabled = canSubmit,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 52.dp),
                 shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colour,
-                    contentColor = Color.White,
+                    contentColor = onColour,
                     disabledContainerColor = colors.outline,
                     disabledContentColor = colors.textMuted
                 )
             ) {
                 Text(
                     text = stringResource(
-                        if (kind == TimerKind.QUICKSAND) R.string.create_quicksand
-                        else R.string.create_sand_timer
+                        when {
+                            editing != null -> R.string.save_changes
+                            kind == TimerKind.QUICKSAND -> R.string.create_quicksand
+                            else -> R.string.create_sand_timer
+                        }
                     ),
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -240,7 +289,7 @@ private fun FieldLabel(text: String) {
     )
 }
 
-/** Two mutually exclusive pills; the selected one carries the chosen sand colour. */
+/** Two mutually exclusive pills; the selected one carries the chosen sand. */
 @Composable
 private fun KindSelector(
     selected: TimerKind,
@@ -248,6 +297,7 @@ private fun KindSelector(
     accent: Color
 ) {
     val colors = HourglassTheme.colors
+    val onAccent = if (accent.luminance() > 0.55f) colors.textPrimary else Color.White
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -282,48 +332,15 @@ private fun KindSelector(
                         else R.string.sand_timer
                     ),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) Color.White else colors.textSecondary
+                    color = if (isSelected) onAccent else colors.textSecondary
                 )
             }
         }
     }
 }
 
-/** Steppers rather than free-text fields: fewer ways to enter an invalid duration. */
 @Composable
-private fun DurationPicker(
-    hours: Int,
-    minutes: Int,
-    accent: Color,
-    onHoursChange: (Int) -> Unit,
-    onMinutesChange: (Int) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        Stepper(
-            value = hours,
-            label = stringResource(R.string.hours),
-            range = 0..23,
-            accent = accent,
-            onChange = onHoursChange,
-            modifier = Modifier.weight(1f)
-        )
-        Stepper(
-            value = minutes,
-            label = stringResource(R.string.minutes),
-            range = 0..55,
-            step = 5,
-            accent = accent,
-            onChange = onMinutesChange,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun ColourSwatch(colour: Color, selected: Boolean, onSelect: () -> Unit) {
+private fun SandSwatch(swatch: Color, selected: Boolean, onSelect: () -> Unit) {
     val colors = HourglassTheme.colors
     val diameter by animateDpAsState(
         targetValue = if (selected) 46.dp else 40.dp,
@@ -334,24 +351,21 @@ private fun ColourSwatch(colour: Color, selected: Boolean, onSelect: () -> Unit)
         modifier = Modifier
             .size(diameter)
             .clip(CircleShape)
-            .background(colour)
+            .background(swatch)
             .border(
                 width = if (selected) 2.dp else 0.dp,
                 color = if (selected) colors.textPrimary.copy(alpha = 0.35f) else Color.Transparent,
                 shape = CircleShape
             )
-            .selectable(
-                selected = selected,
-                role = Role.RadioButton,
-                onClick = onSelect
-            ),
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         contentAlignment = Alignment.Center
     ) {
         if (selected) {
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = null,
-                tint = Color.White,
+                // Picked from the swatch's own luminance so the tick always clears it.
+                tint = if (swatch.luminance() > 0.55f) colors.textPrimary else Color.White,
                 modifier = Modifier.size(20.dp)
             )
         }

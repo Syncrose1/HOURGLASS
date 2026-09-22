@@ -26,8 +26,20 @@ hours before bed. Settings projects the resulting night's sleep and flags a shor
 
 ### 📊 Habit tracking
 Every completed run is written to a session log with its planned duration, elapsed time
-and overtime. The home screen surfaces the day's total; the log is kept on device for
-richer feedback later.
+and overtime — and the Insights screen reads it back: the week's total, a column per
+day with today picked out, where the time actually went per task, your streak, and how
+often a session runs over.
+
+### 🔔 Time's up
+A timer that reaches its allocation says so — a one-shot alert on its own notification
+channel, plus a haptic if the app is open. It does not stop anything: the timer keeps
+running into overtime, because you chose the allocation, you did not agree to be cut
+off at it.
+
+### 🌒 It cuts both ways
+"Respect your rest" is not decoration. If a timer is still running after your bedtime,
+the home screen says so once — quietly, with the stop button right there. It never
+interrupts and never stops anything itself.
 
 ### 🔔 Ongoing notification
 A running timer holds a foreground-service notification with the task name, the time
@@ -39,6 +51,12 @@ swapped out or the device rebooting — the run is journalled and restored on ne
 - **One palette.** A single warm neutral ramp carries every surface, border and label;
   accents only ever appear as sand, glow or state. Material You dynamic colour is
   deliberately *not* used — the sand palette is the point.
+- **The eight sands are computed, not eyeballed.** Each one is a token that resolves to
+  a different step in light and dark — steps chosen for that surface, never flipped
+  from the other. Both sets were run through a colour-vision validator: adjacent
+  swatches clear ΔE 15 for normal vision and ΔE 15 under protanopia, deuteranopia and
+  tritanopia. Colour never carries identity alone regardless — every card and every
+  chart row is labelled.
 - **Two voices.** Numbers are thin and wide open; labels are small, bold and
   letter-spaced.
 - **Motion means something.** A running card is the only thing on screen that moves:
@@ -53,12 +71,12 @@ if you want to look before building.
 
 | Layer | What lives there |
 |---|---|
-| `core/` | Pure Kotlin: duration formatting, bedtime arithmetic, the timer state machine. No Android imports, fully unit tested. |
+| `core/` | Pure Kotlin: duration formatting, bedtime arithmetic, the timer state machine, the insights aggregation. No Android imports, fully unit tested. |
 | `data/` | Room entities, DAOs, and `HourglassRepository` — the single door onto storage. |
 | `timer/` | `TimerController`, a process singleton that owns the one running timer, ticks it, and journals it. |
 | `service/` | `TimerService`, a renderer for the controller's state as an ongoing notification. |
 | `viewmodel/` | Screen state, assembled from the repository and the controller. |
-| `ui/` | Theme tokens, drawn components, screens, navigation. |
+| `ui/` | Theme tokens, drawn components, charts, screens, navigation. |
 
 Kotlin + Jetpack Compose, MVVM, Hilt for injection, Room for persistence.
 

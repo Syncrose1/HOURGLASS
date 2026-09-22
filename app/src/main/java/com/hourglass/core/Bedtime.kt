@@ -39,6 +39,23 @@ object Bedtime {
         return 1f - minutesUntilBedtime.toFloat() / WIND_DOWN_MINUTES
     }
 
+    /**
+     * True when the current time falls inside the night — after bedtime, before waking.
+     *
+     * "Bank your time, respect your rest" cuts both ways: the app is as willing to say
+     * stop as it is to say start, and this is what lets a running timer say so.
+     */
+    fun isPastBedtime(nowMinuteOfDay: Int, bedtime: TimeOfDay, wake: TimeOfDay): Boolean {
+        val bed = bedtime.minuteOfDay
+        val rise = wake.minuteOfDay
+        return if (bed <= rise) {
+            // A night that does not cross midnight, e.g. a 02:00 bedtime and 07:00 wake.
+            nowMinuteOfDay in bed until rise
+        } else {
+            nowMinuteOfDay >= bed || nowMinuteOfDay < rise
+        }
+    }
+
     /** True once bedtime is inside the wind-down window. */
     fun isWindingDown(minutesUntilBedtime: Int): Boolean =
         minutesUntilBedtime <= WIND_DOWN_MINUTES

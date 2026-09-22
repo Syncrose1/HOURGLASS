@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import com.hourglass.core.ActiveTimer
 import com.hourglass.core.TimerRecord
 import com.hourglass.core.TimerRef
+import com.hourglass.core.TimerSand
 import com.hourglass.data.repository.HourglassRepository
 import com.hourglass.di.ApplicationScope
 import com.hourglass.service.TimerService
@@ -13,8 +14,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -43,11 +48,26 @@ class TimerController @Inject constructor(
     private val _state = MutableStateFlow<ActiveTimer?>(null)
     val state: StateFlow<ActiveTimer?> = _state.asStateFlow()
 
+    /**
+     * Fires once, the moment a running timer reaches its allocation.
+     *
+     * A timer that silently slides into overtime is a timer that failed at its one
+     * job, so this is what the alert and the haptic hang off. Replay is 0: a listener
+     * that subscribes later has missed a moment, not a state.
+     */
+    private val _completions = MutableSharedFlow<ActiveTimer>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val completions: SharedFlow<ActiveTimer> = _completions.asSharedFlow()
+
     /** Guards the start/pause/resume/stop transitions against overlapping taps. */
     private val mutex = Mutex()
     private var record: TimerRecord? = null
     private var ticker: Job? = null
     private var restored = false
+    private var announcedCompletion = false
 
     /**
      * Brings back the timer that was running when the process last went away.
@@ -66,7 +86,10 @@ class TimerController @Inject constructor(
                     return@withLock
                 }
                 record = stored
-                publish(stored, definition.name, definition.colourHex)
+                // A timer restored past its allocation has already been announced.
+                announcedCompletion = stored.elapsedAt(System.currentTimeMillis()) >=
+                    stored.totalDurationMillis
+                publish(stored, definition.name, definition.sand)
                 if (stored.isRunning) {
                     startTicking()
                     startService()
@@ -88,8 +111,9 @@ class TimerController @Inject constructor(
                 val now = System.currentTimeMillis()
                 val fresh = TimerRecord.started(ref, definition.durationMillis, now)
                 record = fresh
+                announcedCompletion = false
                 repository.saveTimerRecord(fresh)
-                publish(fresh, definition.name, definition.colourHex)
+                publish(fresh, definition.name, definition.sand)
                 startTicking()
                 startService()
             }
@@ -160,11 +184,11 @@ class TimerController @Inject constructor(
         if (stopService) context.stopService(Intent(context, TimerService::class.java))
     }
 
-    private fun publish(record: TimerRecord, name: String, colourHex: String) {
+    private fun publish(record: TimerRecord, name: String, sand: TimerSand) {
         _state.value = ActiveTimer(
             ref = record.ref,
             name = name,
-            colourHex = colourHex,
+            sand = sand,
             totalDurationMillis = record.totalDurationMillis,
             elapsedMillis = record.elapsedAt(System.currentTimeMillis()),
             isRunning = record.isRunning,
@@ -179,7 +203,14 @@ class TimerController @Inject constructor(
                 val current = record ?: break
                 if (!current.isRunning) break
                 val elapsed = current.elapsedAt(System.currentTimeMillis())
-                _state.value = _state.value?.copy(elapsedMillis = elapsed, isRunning = true)
+                val updated = _state.value?.copy(elapsedMillis = elapsed, isRunning = true)
+                _state.value = updated
+                if (updated != null && !announcedCompletion &&
+                    elapsed >= current.totalDurationMillis
+                ) {
+                    announcedCompletion = true
+                    _completions.tryEmit(updated)
+                }
                 delay(TICK_INTERVAL_MILLIS)
             }
         }

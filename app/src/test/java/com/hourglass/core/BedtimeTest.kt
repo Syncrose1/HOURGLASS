@@ -62,3 +62,37 @@ class BedtimeTest {
         assertEquals("7h 45m", Bedtime.describeSleep(465))
     }
 }
+
+class PastBedtimeTest {
+
+    private val tenPm = TimeOfDay(22, 0)
+    private val sevenAm = TimeOfDay(7, 0)
+
+    private fun past(hour: Int, minute: Int = 0, bed: TimeOfDay = tenPm, wake: TimeOfDay = sevenAm) =
+        Bedtime.isPastBedtime(TimeOfDay(hour, minute).minuteOfDay, bed, wake)
+
+    @Test
+    fun `the night wraps past midnight`() {
+        assertTrue(past(22))
+        assertTrue(past(23, 30))
+        assertTrue(past(2))
+        assertTrue(past(6, 59))
+    }
+
+    @Test
+    fun `daytime is not past bedtime`() {
+        assertFalse(past(7))
+        assertFalse(past(12))
+        assertFalse(past(21, 59))
+    }
+
+    @Test
+    fun `a night that does not cross midnight still works`() {
+        val bed = TimeOfDay(2, 0)
+        val wake = TimeOfDay(9, 0)
+        assertTrue(past(3, bed = bed, wake = wake))
+        assertFalse(past(1, bed = bed, wake = wake))
+        assertFalse(past(10, bed = bed, wake = wake))
+        assertFalse(past(23, bed = bed, wake = wake))
+    }
+}

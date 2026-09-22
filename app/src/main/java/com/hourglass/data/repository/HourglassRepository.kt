@@ -4,6 +4,8 @@ import com.hourglass.core.ActiveTimer
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRecord
 import com.hourglass.core.TimerRef
+import com.hourglass.core.TimerSand
+import com.hourglass.core.SessionSummary
 import com.hourglass.data.dao.QuicksandDao
 import com.hourglass.data.dao.SettingsDao
 import com.hourglass.data.dao.TaskDao
@@ -22,7 +24,7 @@ import kotlin.math.max
 data class TimerDefinition(
     val ref: TimerRef,
     val name: String,
-    val colourHex: String,
+    val sand: TimerSand,
     val durationMillis: Long,
     val totalTimeTracked: Long,
     val sessionsCompleted: Int,
@@ -58,17 +60,39 @@ class HourglassRepository @Inject constructor(
         kind: TimerKind,
         name: String,
         durationMillis: Long,
-        colourHex: String
+        sand: TimerSand
     ): TimerRef {
         val id = when (kind) {
             TimerKind.TASK -> taskDao.insert(
-                TaskEntity(name = name, durationMillis = durationMillis, colour = colourHex)
+                TaskEntity(name = name, durationMillis = durationMillis, colour = sand.token)
             )
             TimerKind.QUICKSAND -> quicksandDao.insert(
-                QuicksandTaskEntity(name = name, durationMillis = durationMillis, colour = colourHex)
+                QuicksandTaskEntity(
+                    name = name,
+                    durationMillis = durationMillis,
+                    colour = sand.token
+                )
             )
         }
         return TimerRef(id, kind)
+    }
+
+    /**
+     * Edits a timer in place. Running totals and session history are untouched: the
+     * point of editing is to keep the history, otherwise the user would archive and
+     * start again.
+     */
+    suspend fun update(ref: TimerRef, name: String, durationMillis: Long, sand: TimerSand) {
+        when (ref.kind) {
+            TimerKind.TASK -> taskDao.getById(ref.id)?.let {
+                taskDao.update(it.copy(name = name, durationMillis = durationMillis, colour = sand.token))
+            }
+            TimerKind.QUICKSAND -> quicksandDao.getById(ref.id)?.let {
+                quicksandDao.update(
+                    it.copy(name = name, durationMillis = durationMillis, colour = sand.token)
+                )
+            }
+        }
     }
 
     suspend fun archive(ref: TimerRef) = when (ref.kind) {
@@ -83,6 +107,26 @@ class HourglassRepository @Inject constructor(
      */
     fun observeRecentSessions(limit: Int = RECENT_SESSION_WINDOW): Flow<List<TimerSessionEntity>> =
         sessionDao.observeRecent(limit)
+
+    /**
+     * Recent sessions reduced to the pure form the insights layer works in.
+     * [dayOf] converts an instant to a local epoch day — the caller owns the timezone.
+     */
+    fun observeSessionSummaries(
+        limit: Int = RECENT_SESSION_WINDOW,
+        dayOf: (Long) -> Long
+    ): Flow<List<SessionSummary>> = sessionDao.observeRecent(limit).map { rows ->
+        rows.map { row ->
+            SessionSummary(
+                epochDay = dayOf(row.endedAt),
+                taskName = row.taskName,
+                sand = TimerSand.parse(row.colour),
+                elapsedMillis = row.elapsedMillis,
+                overtimeMillis = row.overtimeMillis,
+                completed = row.completed
+            )
+        }
+    }
 
     /**
      * Files a finished run against both the session log and the timer's running totals.
@@ -105,7 +149,8 @@ class HourglassRepository @Inject constructor(
                 overtimeMillis = overtime,
                 startedAt = timer.startedAt,
                 endedAt = endedAt,
-                completed = completed
+                completed = completed,
+                colour = timer.sand.token
             )
         )
 
@@ -171,7 +216,7 @@ class HourglassRepository @Inject constructor(
 private fun TaskEntity.toDefinition() = TimerDefinition(
     ref = TimerRef(id, TimerKind.TASK),
     name = name,
-    colourHex = colour,
+    sand = TimerSand.parse(colour),
     durationMillis = durationMillis,
     totalTimeTracked = totalTimeTracked,
     sessionsCompleted = sessionsCompleted,
@@ -181,7 +226,7 @@ private fun TaskEntity.toDefinition() = TimerDefinition(
 private fun QuicksandTaskEntity.toDefinition() = TimerDefinition(
     ref = TimerRef(id, TimerKind.QUICKSAND),
     name = name,
-    colourHex = colour,
+    sand = TimerSand.parse(colour),
     durationMillis = durationMillis,
     totalTimeTracked = totalTimeTracked,
     sessionsCompleted = sessionsCompleted,

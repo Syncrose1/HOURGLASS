@@ -19,7 +19,7 @@ data class TimerRef(val id: Long, val kind: TimerKind)
 data class ActiveTimer(
     val ref: TimerRef,
     val name: String,
-    val colourHex: String,
+    val sand: TimerSand,
     val totalDurationMillis: Long,
     val elapsedMillis: Long,
     val isRunning: Boolean,

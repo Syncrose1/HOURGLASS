@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
@@ -41,7 +42,6 @@ import com.hourglass.R
 import com.hourglass.core.TimeFormat
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
-import com.hourglass.ui.util.toTimerColour
 import com.hourglass.viewmodel.TimerCard
 
 /** A full-weight sand timer: the things the user planned their day around. */
@@ -52,11 +52,12 @@ fun SandTimerCard(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
+    onEdit: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = HourglassTheme.colors
-    val accent = card.colourHex.toTimerColour(colors.accent)
+    val accent = colors.sand(card.sand)
     val active = !card.isIdle
     val timeColour = if (card.isOvertime) colors.overtime else colors.textPrimary
 
@@ -100,13 +101,23 @@ fun SandTimerCard(
                 StatusLine(card = card, accent = accent)
             }
 
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.remove_timer, card.name),
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(18.dp)
-                )
+            Column {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = stringResource(R.string.edit_timer_named, card.name),
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+                IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.remove_timer, card.name),
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
             }
         }
 

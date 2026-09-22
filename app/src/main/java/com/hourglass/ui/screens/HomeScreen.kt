@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -25,10 +26,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,7 +41,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hourglass.R
 import com.hourglass.core.TimeFormat
+import com.hourglass.core.TimerRef
 import com.hourglass.ui.components.BedtimeCard
+import com.hourglass.ui.components.BedtimeNudge
 import com.hourglass.ui.components.HourglassMark
 import com.hourglass.ui.components.HourglassTopBar
 import com.hourglass.ui.components.QuicksandCard
@@ -58,13 +65,24 @@ import com.hourglass.viewmodel.SettingsViewModel
 @Composable
 fun HomeScreen(
     onAddTimer: () -> Unit,
+    onEditTimer: (TimerRef) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenInsights: () -> Unit,
     viewModel: HourglassViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val home by viewModel.homeState.collectAsStateWithLifecycle()
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val colors = HourglassTheme.colors
+    val haptics = LocalHapticFeedback.current
+
+    // A timer reaching its allocation is worth feeling, not just seeing. The
+    // notification covers the case where the app is not in front of the user.
+    LaunchedEffect(Unit) {
+        viewModel.completions.collect {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -73,6 +91,13 @@ fun HomeScreen(
                 title = stringResource(R.string.app_name),
                 showMark = true,
                 actions = {
+                    IconButton(onClick = onOpenInsights) {
+                        Icon(
+                            imageVector = Icons.Rounded.BarChart,
+                            contentDescription = stringResource(R.string.insights),
+                            tint = colors.textSecondary
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Rounded.Settings,
@@ -114,6 +139,16 @@ fun HomeScreen(
                 )
             }
 
+            item(key = "bedtime_nudge") {
+                BedtimeNudge(
+                    visible = home.runningPastBedtime,
+                    onStop = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.stop()
+                    }
+                )
+            }
+
             if (home.focusedTodayMillis > 0) {
                 item(key = "focus_summary") {
                     FocusSummary(millis = home.focusedTodayMillis)
@@ -134,10 +169,11 @@ fun HomeScreen(
                 items(home.sandTimers, key = { "sand_${it.ref.id}" }) { card ->
                     SandTimerCard(
                         card = card,
-                        onStart = { viewModel.start(card.ref) },
-                        onPause = viewModel::pause,
-                        onResume = viewModel::resume,
-                        onStop = viewModel::stop,
+                        onStart = { haptics.tick(); viewModel.start(card.ref) },
+                        onPause = { haptics.tick(); viewModel.pause() },
+                        onResume = { haptics.tick(); viewModel.resume() },
+                        onStop = { haptics.tick(); viewModel.stop() },
+                        onEdit = { onEditTimer(card.ref) },
                         onRemove = { viewModel.archive(card.ref) },
                         modifier = Modifier.animateItemPlacement(tween(durationMillis = 280))
                     )
@@ -154,10 +190,11 @@ fun HomeScreen(
                 items(home.quicksand, key = { "quick_${it.ref.id}" }) { card ->
                     QuicksandCard(
                         card = card,
-                        onStart = { viewModel.start(card.ref) },
-                        onPause = viewModel::pause,
-                        onResume = viewModel::resume,
-                        onStop = viewModel::stop,
+                        onStart = { haptics.tick(); viewModel.start(card.ref) },
+                        onPause = { haptics.tick(); viewModel.pause() },
+                        onResume = { haptics.tick(); viewModel.resume() },
+                        onStop = { haptics.tick(); viewModel.stop() },
+                        onEdit = { onEditTimer(card.ref) },
                         onRemove = { viewModel.archive(card.ref) },
                         modifier = Modifier.animateItemPlacement(tween(durationMillis = 280))
                     )
@@ -214,3 +251,7 @@ private fun EmptyState() {
         )
     }
 }
+
+/** Every transport control answers with the same short tick. */
+private fun HapticFeedback.tick() =
+    performHapticFeedback(HapticFeedbackType.TextHandleMove)

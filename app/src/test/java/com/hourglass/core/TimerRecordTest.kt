@@ -64,7 +64,7 @@ class TimerRecordTest {
         val base = ActiveTimer(
             ref = ref,
             name = "Flashcards",
-            colourHex = "#FFE0A63C",
+            sand = TimerSand.AMBER,
             totalDurationMillis = 60_000,
             elapsedMillis = 15_000,
             isRunning = true,

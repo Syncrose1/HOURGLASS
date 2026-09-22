@@ -59,6 +59,7 @@ class TimerService : Service() {
         }
 
         observeTimer()
+        observeCompletions()
         return START_NOT_STICKY
     }
 
@@ -74,6 +75,24 @@ class TimerService : Service() {
                 .map { timer -> timer?.let(NotificationSnapshot::of) }
                 .distinctUntilChanged()
                 .collect { render(controller.state.value) }
+        }
+    }
+
+    private var observingCompletions = false
+
+    private fun observeCompletions() {
+        if (observingCompletions) return
+        observingCompletions = true
+        scope.launch {
+            controller.completions.collect { timer ->
+                runCatching {
+                    NotificationManagerCompat.from(this@TimerService)
+                        .notify(
+                            NotificationHelper.NOTIFICATION_DONE_ID,
+                            NotificationHelper.buildCompletion(this@TimerService, timer)
+                        )
+                }
+            }
         }
     }
 
@@ -97,6 +116,10 @@ class TimerService : Service() {
     }
 
     private fun stopForegroundAndSelf() {
+        // The alert is about a moment that has passed; it should not outlive the timer.
+        runCatching {
+            NotificationManagerCompat.from(this).cancel(NotificationHelper.NOTIFICATION_DONE_ID)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

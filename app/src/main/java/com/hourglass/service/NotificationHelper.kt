@@ -16,22 +16,70 @@ import com.hourglass.core.TimeFormat
 
 /** Builds the ongoing timer notification and its channel. */
 object NotificationHelper {
+    /** The quiet, ongoing "a timer is running" notification. */
     const val CHANNEL_ID = "hourglass_timers"
+
+    /** The one-shot "time is up" alert. Separate channel so it can be silenced alone. */
+    const val CHANNEL_DONE_ID = "hourglass_complete"
+
     const val NOTIFICATION_ID = 1001
+    const val NOTIFICATION_DONE_ID = 1002
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            context.getString(R.string.channel_timers_name),
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = context.getString(R.string.channel_timers_description)
-            setShowBadge(false)
-            enableVibration(false)
-        }
-        context.getSystemService<NotificationManager>()?.createNotificationChannel(channel)
+        val manager = context.getSystemService<NotificationManager>() ?: return
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.channel_timers_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = context.getString(R.string.channel_timers_description)
+                setShowBadge(false)
+                enableVibration(false)
+            }
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_DONE_ID,
+                context.getString(R.string.channel_complete_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = context.getString(R.string.channel_complete_description)
+                setShowBadge(true)
+                enableVibration(true)
+            }
+        )
     }
+
+    /**
+     * Fired once when a timer reaches its allocation. The ongoing notification keeps
+     * counting into overtime behind this one — the user chose the allocation, they did
+     * not agree to be stopped at it.
+     */
+    fun buildCompletion(context: Context, timer: ActiveTimer): Notification =
+        NotificationCompat.Builder(context, CHANNEL_DONE_ID)
+            .setContentTitle(context.getString(R.string.notification_complete_title, timer.name))
+            .setContentText(
+                context.getString(
+                    R.string.notification_complete_body,
+                    TimeFormat.compact(timer.totalDurationMillis)
+                )
+            )
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(contentIntent(context))
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .addAction(
+                0,
+                context.getString(R.string.stop),
+                serviceIntent(context, TimerService.ACTION_STOP)
+            )
+            .build()
 
     fun build(context: Context, timer: ActiveTimer): Notification {
         val remaining = TimeFormat.signedClock(timer.remainingMillis)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
@@ -25,7 +26,6 @@ import com.hourglass.R
 import com.hourglass.core.TimeFormat
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
-import com.hourglass.ui.util.toTimerColour
 import com.hourglass.viewmodel.TimerCard
 
 /**
@@ -40,11 +40,12 @@ fun QuicksandCard(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
+    onEdit: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = HourglassTheme.colors
-    val accent = card.colourHex.toTimerColour(colors.textSecondary)
+    val accent = colors.sand(card.sand)
     val active = !card.isIdle
 
     TimerCardShell(
@@ -82,11 +83,16 @@ fun QuicksandCard(
                 )
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                IconButton(
-                    onClick = onRemove,
-                    modifier = Modifier.size(28.dp)
-                ) {
+            Row {
+                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = stringResource(R.string.edit_timer_named, card.name),
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.remove_timer, card.name),

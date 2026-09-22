@@ -56,9 +56,36 @@
     <string name="expand">Expand</string>
     <string name="collapse">Collapse</string>
 
+    <!-- Insights -->
+    <string name="insights">Insights</string>
+    <string name="banked_this_week">Banked this week</string>
+    <string name="daily_focus">Daily focus</string>
+    <string name="where_it_went">Where it went</string>
+    <string name="sessions">Sessions</string>
+    <string name="on_time">On time</string>
+    <string name="streak">Streak</string>
+    <string name="streak_days">%1$d d</string>
+    <string name="percent">%1$d%%</string>
+    <string name="overran_count">%1$d ran over</string>
+    <string name="no_sessions_yet">Nothing banked yet</string>
+    <string name="no_sessions_hint">Run a timer through to the end and it will show up here.</string>
+
+    <!-- Editing -->
+    <string name="edit_timer">Edit timer</string>
+    <string name="edit_timer_named">Edit %1$s</string>
+    <string name="save_changes">Save changes</string>
+
+    <!-- Rest -->
+    <string name="past_bedtime_title">It is past your bedtime</string>
+    <string name="past_bedtime_body">This will still be here tomorrow. Stopping now protects the night you planned.</string>
+
     <!-- Notification -->
     <string name="channel_timers_name">Running timers</string>
     <string name="channel_timers_description">Shows the timer that is currently running and the time left on it.</string>
+    <string name="channel_complete_name">Timer finished</string>
+    <string name="channel_complete_description">Alerts you once when a timer reaches the time you allocated it.</string>
+    <string name="notification_complete_title">%1$s is done</string>
+    <string name="notification_complete_body">You banked the full %1$s. Anything past this counts as overtime.</string>
     <string name="notification_remaining">%1$s remaining</string>
     <string name="notification_paused">Paused at %1$s</string>
     <string name="notification_overtime">Overtime %1$s</string>

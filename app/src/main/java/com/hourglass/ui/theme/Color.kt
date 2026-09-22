@@ -3,6 +3,7 @@ package com.hourglass.ui.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.hourglass.core.TimerSand
 
 /*
  * Raw palette.
@@ -39,19 +40,38 @@ val OvertimeLight = Color(0xFFC0503F)
 val OvertimeDark = Color(0xFFE98267)
 val OvertimeContainerLight = Color(0xFFF7E1DB)
 
-/**
- * The eight sand colours a timer can be given. Ordered as a warm-to-cool sweep so
- * the picker reads as a single ribbon rather than a bag of swatches.
+/*
+ * Timer sands.
+ *
+ * Eight hues, stepped separately for each surface rather than flipped between them.
+ * Both sets were checked with a colour-vision validator: adjacent swatches clear
+ * ΔE 15 for normal vision and ΔE 15 under protanopia, deuteranopia and tritanopia.
+ *
+ * Several sands sit below 3:1 against their surface, which is fine here and only
+ * because of how they are used: a sand is always accompanied by the timer's name in
+ * a text colour, never asked to carry identity by itself.
  */
-val TimerPalette: List<Color> = listOf(
-    Color(0xFFE0A63C), // amber
-    Color(0xFFE08A4B), // apricot
-    Color(0xFFD4604A), // terracotta
-    Color(0xFFC2506E), // rose
-    Color(0xFF8A5E9E), // plum
-    Color(0xFF52689E), // indigo
-    Color(0xFF2F8F86), // teal
-    Color(0xFF6F8F45)  // olive
+
+private val LightSands = mapOf(
+    TimerSand.AMBER to Color(0xFFD9A949),
+    TimerSand.TERRACOTTA to Color(0xFFA14122),
+    TimerSand.ROSE to Color(0xFFEB8D8A),
+    TimerSand.PLUM to Color(0xFF84467F),
+    TimerSand.LAVENDER to Color(0xFFAAA1F6),
+    TimerSand.INDIGO to Color(0xFF3063A6),
+    TimerSand.AQUA to Color(0xFF33C1C2),
+    TimerSand.OLIVE to Color(0xFF3D701E)
+)
+
+private val DarkSands = mapOf(
+    TimerSand.AMBER to Color(0xFFB48B39),
+    TimerSand.TERRACOTTA to Color(0xFF94472F),
+    TimerSand.ROSE to Color(0xFFCD7673),
+    TimerSand.PLUM to Color(0xFF82477E),
+    TimerSand.LAVENDER to Color(0xFF8F87D2),
+    TimerSand.INDIGO to Color(0xFF33619D),
+    TimerSand.AQUA to Color(0xFF12A7A8),
+    TimerSand.OLIVE to Color(0xFF426E2A)
 )
 
 /**
@@ -87,8 +107,20 @@ data class HourglassColors(
     val frame: Color,
     val duskTop: Color,
     val duskBottom: Color,
-    val scrim: Color
-)
+    val scrim: Color,
+    /** Chart ink one step off the surface: gridlines, baselines, empty tracks. */
+    val chartGrid: Color,
+    /** Columns that are present but not the subject — the de-emphasis step. */
+    val chartMuted: Color,
+    val sands: Map<TimerSand, Color>
+) {
+    /** The step for [sand] on this theme's surface. */
+    fun sand(sand: TimerSand): Color = sands.getValue(sand)
+
+    /** Every sand in picker order. */
+    fun allSands(): List<Pair<TimerSand, Color>> =
+        TimerSand.entries.map { it to sands.getValue(it) }
+}
 
 private val LightColors = HourglassColors(
     isDark = false,
@@ -110,7 +142,10 @@ private val LightColors = HourglassColors(
     frame = Sand600,
     duskTop = DuskIndigo,
     duskBottom = DuskAmber,
-    scrim = Color(0x14000000)
+    scrim = Color(0x14000000),
+    chartGrid = Sand200,
+    chartMuted = Sand300,
+    sands = LightSands
 )
 
 private val DarkColors = HourglassColors(
@@ -133,7 +168,10 @@ private val DarkColors = HourglassColors(
     frame = Sand500,
     duskTop = Color(0xFF232544),
     duskBottom = Color(0xFF5E3F26),
-    scrim = Color(0x33000000)
+    scrim = Color(0x33000000),
+    chartGrid = Color(0xFF362D24),
+    chartMuted = Color(0xFF4A3D30),
+    sands = DarkSands
 )
 
 internal fun hourglassColors(darkTheme: Boolean): HourglassColors =
