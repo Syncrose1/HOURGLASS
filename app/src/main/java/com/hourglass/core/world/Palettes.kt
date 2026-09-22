@@ -25,7 +25,49 @@ object Palettes {
         WorldKind.ANTS -> ants(accent)
         WorldKind.ISLAND -> island(accent)
         WorldKind.FOREST -> forest(accent)
+        WorldKind.BATTLE -> battle(accent)
     }
+
+    /**
+     * A valley in summer, from above. Your side wears the timer's colour; theirs is a
+     * cold grey-blue, so the two read apart at a glance on any accent.
+     */
+    private fun battle(accent: Int) = WorldPalette(
+        colours = IntArray(BattleMat.COUNT).also {
+            it[BattleMat.GRASS] = 0xFF7E9A4E.toInt()
+            it[BattleMat.GRASS_DARK] = 0xFF728E45.toInt()
+            it[BattleMat.GRASS_LIGHT] = 0xFF8AA657.toInt()
+            it[BattleMat.FOREST] = 0xFF3F6B35.toInt()
+            it[BattleMat.FOREST_DARK] = 0xFF32592C.toInt()
+            it[BattleMat.ROCK] = 0xFF8F8A80.toInt()
+            it[BattleMat.WATER] = 0xFF3C74A0.toInt()
+            it[BattleMat.WATER_LIGHT] = 0xFF5B90B8.toInt()
+            it[BattleMat.FORD] = 0xFF78A3B8.toInt()
+            it[BattleMat.BRIDGE] = 0xFF8A6A48.toInt()
+            it[BattleMat.HILL] = 0xFFA5AE62.toInt()
+            it[BattleMat.HILL_DARK] = 0xFF979F58.toInt()
+            it[BattleMat.CRATER] = 0xFF4A4132.toInt()
+            it[BattleMat.SCORCH] = 0xFF6E7F45.toInt()
+            it[BattleMat.TENT_OURS] = mix(accent, WHITE, 0.55f)
+            it[BattleMat.TENT_THEIRS] = 0xFFC5CCD6.toInt()
+            it[BattleMat.POLE] = 0xFF3A2A1E.toInt()
+            it[BattleMat.FLAG_OURS] = accent
+            it[BattleMat.FLAG_THEIRS] = THEIRS
+            it[BattleMat.FLAG_NEUTRAL] = 0xFFF2EEE4.toInt()
+            it[BattleMat.OURS] = mix(accent, WHITE, 0.1f)
+            it[BattleMat.THEIRS] = THEIRS
+            it[BattleMat.OURS_ROUTED] = mix(accent, 0xFF7E9A4E.toInt(), 0.6f)
+            it[BattleMat.THEIRS_ROUTED] = mix(THEIRS, 0xFF7E9A4E.toInt(), 0.6f)
+            it[BattleMat.TRACER] = 0xFFFFF1B8.toInt()
+            it[BattleMat.SHELL] = 0xFF1E1B1A.toInt()
+            it[BattleMat.BLAST] = 0xFFFFB347.toInt()
+        },
+        bright = setOf(BattleMat.TRACER, BattleMat.BLAST, BattleMat.OURS, BattleMat.THEIRS),
+        sky = -1,
+        depthShading = 0f
+    )
+
+    private const val THEIRS = 0xFF3D4A66.toInt()
 
     /**
      * A clearing in late light. The crew wear the timer's colour, so the people doing

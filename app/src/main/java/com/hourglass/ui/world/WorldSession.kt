@@ -2,6 +2,7 @@ package com.hourglass.ui.world
 
 import com.hourglass.core.TimerRef
 import com.hourglass.core.world.AntWorld
+import com.hourglass.core.world.BattleWorld
 import com.hourglass.core.world.ForestWorld
 import com.hourglass.core.world.IslandWorld
 import com.hourglass.core.world.MineWorld
@@ -19,7 +20,7 @@ import kotlin.random.Random
  */
 class WorldSession(val world: World) {
 
-    private val pacer = WorldPacer()
+    private val pacer = world.newPacer()
 
     /** Runtime randomness; the ground itself came from the seed. */
     private val random = Random(System.nanoTime())
@@ -101,6 +102,7 @@ object WorldRegistry {
             WorldKind.ANTS -> AntWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, AntWorld.quotaFor(minutes))
             WorldKind.ISLAND -> IslandWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, IslandWorld.quotaFor(minutes))
             WorldKind.FOREST -> ForestWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, ForestWorld.quotaFor(minutes))
+            WorldKind.BATTLE -> BattleWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, BattleWorld.pointsFor(minutes))
         }
         return WorldSession(world)
     }

@@ -18,7 +18,10 @@ enum class WorldKind {
     ISLAND,
 
     /** A lumber crew fells a stand of trees and stacks the timber. */
-    FOREST;
+    FOREST,
+
+    /** Two armies contest a valley, flag by flag. */
+    BATTLE;
 
     /** The value persisted with a timer. */
     val token: String get() = name.lowercase()
@@ -62,6 +65,13 @@ interface World {
      * the surface; a river's lake, jam and valley sit in the middle under open sky.
      */
     val focusY: Float get() = 0.5f
+
+    /**
+     * A pacer tuned to how quickly this world answers to effort. Most answer within
+     * seconds; a battle answers over minutes, and a pacer that pushes as if it were
+     * digging only whipsaws the line.
+     */
+    fun newPacer(): WorldPacer = WorldPacer()
 
     /**
      * Advances one tick.

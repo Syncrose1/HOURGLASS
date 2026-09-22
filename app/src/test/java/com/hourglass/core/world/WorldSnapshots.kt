@@ -65,6 +65,12 @@ class WorldSnapshots {
     }
 
     @Test
+    fun battle() {
+        val dir = outputDir()
+        listOf(3L, 11L).forEach { seed -> render(BattleWorld(72, 96, seed, BattleWorld.pointsFor(5f)), "battle-$seed", dir) }
+    }
+
+    @Test
     fun sky() {
         val dir = outputDir()
         val sky = DaySky(96, 14)
