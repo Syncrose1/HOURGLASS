@@ -1,5 +1,7 @@
 # HOURGLASS ⏳
 
+[![CI](https://github.com/Syncrose1/HOURGLASS/actions/workflows/ci.yml/badge.svg)](https://github.com/Syncrose1/HOURGLASS/actions/workflows/ci.yml)
+
 A lightweight, on-device productivity timer with a sand aesthetic. Bank your time,
 respect your rest.
 
@@ -106,6 +108,9 @@ Kotlin + Jetpack Compose, MVVM, Hilt for injection, Room for persistence.
 ```
 
 Requires JDK 17 and the Android SDK (compileSdk 34). Minimum device API is 26.
+
+CI runs all three on every pull request, so the build gate is the same one you get
+locally. Reports from a failing run are attached to it as artifacts.
 
 ## Privacy
 

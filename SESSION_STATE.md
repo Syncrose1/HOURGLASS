@@ -88,9 +88,12 @@ L 0.50/0.76, the dark set L 0.49/0.66 inside its narrower band.
   conservation and the angle of repose, the metered hourglass drain, tiling, the
   desert). These run with `./gradlew testDebugUnitTest` and have
   been run green.
-- The Android build (`:app:assembleDebug`) has **not** been run since the rewrite —
-  the environment it was edited in had no reachable Android SDK. Compile it before
-  trusting the UI layer.
+- The Android build has **not** been run in the environment this was written in: no
+  reachable Android SDK there (`dl.google.com` is blocked by network policy). It is
+  now gated in CI instead — `.github/workflows/ci.yml` runs `assembleDebug`,
+  `testDebugUnitTest` and `lintDebug` on every pull request, which is the first place
+  the Compose layer is actually compiled. Treat a green CI run, not this file, as the
+  evidence that it builds.
 - There are no instrumented tests yet.
 
 ## Known gaps / next steps
