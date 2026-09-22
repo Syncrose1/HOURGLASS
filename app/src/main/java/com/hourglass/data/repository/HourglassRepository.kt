@@ -5,6 +5,7 @@ import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRecord
 import com.hourglass.core.TimerRef
 import com.hourglass.core.TimerSand
+import com.hourglass.core.world.WorldKind
 import com.hourglass.core.SessionSummary
 import com.hourglass.data.dao.QuicksandDao
 import com.hourglass.data.dao.SettingsDao
@@ -25,6 +26,7 @@ data class TimerDefinition(
     val ref: TimerRef,
     val name: String,
     val sand: TimerSand,
+    val world: WorldKind,
     val durationMillis: Long,
     val totalTimeTracked: Long,
     val sessionsCompleted: Int,
@@ -60,17 +62,24 @@ class HourglassRepository @Inject constructor(
         kind: TimerKind,
         name: String,
         durationMillis: Long,
-        sand: TimerSand
+        sand: TimerSand,
+        world: WorldKind
     ): TimerRef {
         val id = when (kind) {
             TimerKind.TASK -> taskDao.insert(
-                TaskEntity(name = name, durationMillis = durationMillis, colour = sand.token)
+                TaskEntity(
+                    name = name,
+                    durationMillis = durationMillis,
+                    colour = sand.token,
+                    world = world.token
+                )
             )
             TimerKind.QUICKSAND -> quicksandDao.insert(
                 QuicksandTaskEntity(
                     name = name,
                     durationMillis = durationMillis,
-                    colour = sand.token
+                    colour = sand.token,
+                    world = world.token
                 )
             )
         }
@@ -82,14 +91,32 @@ class HourglassRepository @Inject constructor(
      * point of editing is to keep the history, otherwise the user would archive and
      * start again.
      */
-    suspend fun update(ref: TimerRef, name: String, durationMillis: Long, sand: TimerSand) {
+    suspend fun update(
+        ref: TimerRef,
+        name: String,
+        durationMillis: Long,
+        sand: TimerSand,
+        world: WorldKind
+    ) {
         when (ref.kind) {
             TimerKind.TASK -> taskDao.getById(ref.id)?.let {
-                taskDao.update(it.copy(name = name, durationMillis = durationMillis, colour = sand.token))
+                taskDao.update(
+                    it.copy(
+                        name = name,
+                        durationMillis = durationMillis,
+                        colour = sand.token,
+                        world = world.token
+                    )
+                )
             }
             TimerKind.QUICKSAND -> quicksandDao.getById(ref.id)?.let {
                 quicksandDao.update(
-                    it.copy(name = name, durationMillis = durationMillis, colour = sand.token)
+                    it.copy(
+                        name = name,
+                        durationMillis = durationMillis,
+                        colour = sand.token,
+                        world = world.token
+                    )
                 )
             }
         }
@@ -220,6 +247,7 @@ private fun TaskEntity.toDefinition() = TimerDefinition(
     ref = TimerRef(id, TimerKind.TASK),
     name = name,
     sand = TimerSand.parse(colour),
+    world = WorldKind.parse(world),
     durationMillis = durationMillis,
     totalTimeTracked = totalTimeTracked,
     sessionsCompleted = sessionsCompleted,
@@ -230,6 +258,7 @@ private fun QuicksandTaskEntity.toDefinition() = TimerDefinition(
     ref = TimerRef(id, TimerKind.QUICKSAND),
     name = name,
     sand = TimerSand.parse(colour),
+    world = WorldKind.parse(world),
     durationMillis = durationMillis,
     totalTimeTracked = totalTimeTracked,
     sessionsCompleted = sessionsCompleted,

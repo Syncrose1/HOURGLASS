@@ -18,7 +18,7 @@ import com.hourglass.data.entity.TimerSessionEntity
         SettingsEntity::class,
         TimerSessionEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class HourglassDatabase : RoomDatabase() {

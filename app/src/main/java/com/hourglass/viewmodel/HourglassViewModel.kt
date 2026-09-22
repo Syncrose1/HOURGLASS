@@ -8,6 +8,7 @@ import com.hourglass.core.TimeOfDay
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRef
 import com.hourglass.core.TimerSand
+import com.hourglass.core.world.WorldKind
 import com.hourglass.data.repository.HourglassRepository
 import com.hourglass.data.repository.TimerDefinition
 import com.hourglass.timer.TimerController
@@ -27,6 +28,7 @@ data class TimerCard(
     val ref: TimerRef,
     val name: String,
     val sand: TimerSand,
+    val world: WorldKind = WorldKind.DEFAULT,
     val durationMillis: Long,
     val remainingMillis: Long,
     /** Fraction of the allocation consumed, `0f..1f`. */
@@ -161,19 +163,33 @@ class HourglassViewModel @Inject constructor(
         }
     }
 
-    fun create(kind: TimerKind, name: String, hours: Int, minutes: Int, sand: TimerSand) {
+    fun create(
+        kind: TimerKind,
+        name: String,
+        hours: Int,
+        minutes: Int,
+        sand: TimerSand,
+        world: WorldKind
+    ) {
         viewModelScope.launch {
             val duration = durationOf(hours, minutes)
             if (duration <= 0L || name.isBlank()) return@launch
-            repository.create(kind, name.trim(), duration, sand)
+            repository.create(kind, name.trim(), duration, sand, world)
         }
     }
 
-    fun update(ref: TimerRef, name: String, hours: Int, minutes: Int, sand: TimerSand) {
+    fun update(
+        ref: TimerRef,
+        name: String,
+        hours: Int,
+        minutes: Int,
+        sand: TimerSand,
+        world: WorldKind
+    ) {
         viewModelScope.launch {
             val duration = durationOf(hours, minutes)
             if (duration <= 0L || name.isBlank()) return@launch
-            repository.update(ref, name.trim(), duration, sand)
+            repository.update(ref, name.trim(), duration, sand, world)
         }
     }
 
@@ -207,6 +223,7 @@ private fun TimerDefinition.toCard(active: ActiveTimer?): TimerCard {
         ref = ref,
         name = name,
         sand = sand,
+        world = world,
         durationMillis = durationMillis,
         remainingMillis = live?.remainingMillis ?: durationMillis,
         progress = live?.progress ?: 0f,

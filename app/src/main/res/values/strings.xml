@@ -60,6 +60,10 @@
     <string name="percent">%1$d%%</string>
     <string name="overran_count">%1$d ran over</string>
 
+    <!-- Worlds -->
+    <string name="world_mine">Mine</string>
+    <string name="world_river">River</string>
+
     <!-- Focus -->
     <string name="tap_to_pause">Tap anywhere to pause</string>
     <string name="tap_to_resume">Tap anywhere to resume</string>

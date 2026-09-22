@@ -229,7 +229,7 @@ class RiverWorld(
                 }
 
                 val side = if (random.nextBoolean()) 1 else -1
-                if (slide(x, y, here, below, side) || slide(x, y, here, below, -side)) continue
+                if (slide(x, here, below, side) || slide(x, here, below, -side)) continue
 
                 var target = spread(x, y, side)
                 if (target < 0) target = spread(x, y, -side)
@@ -238,7 +238,7 @@ class RiverWorld(
         }
     }
 
-    private fun slide(x: Int, y: Int, here: Int, below: Int, side: Int): Boolean {
+    private fun slide(x: Int, here: Int, below: Int, side: Int): Boolean {
         val nx = x + side
         if (nx !in 0 until width) return false
         if (!RiverMat.isDry(cells[below + side]) || !RiverMat.isDry(cells[here + side])) return false

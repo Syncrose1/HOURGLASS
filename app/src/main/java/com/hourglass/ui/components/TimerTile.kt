@@ -103,8 +103,8 @@ fun TimerTile(
         ) {
             // The timer's own world. Idle, it is the untouched ground this session
             // will dig; running, it is being dug.
-            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis) {
-                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis)
+            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis, card.world) {
+                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis, card.world)
             }
             WorldView(
                 session = session,

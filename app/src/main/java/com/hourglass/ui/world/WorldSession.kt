@@ -2,6 +2,9 @@ package com.hourglass.ui.world
 
 import com.hourglass.core.TimerRef
 import com.hourglass.core.world.MineWorld
+import com.hourglass.core.world.RiverWorld
+import com.hourglass.core.world.World
+import com.hourglass.core.world.WorldKind
 import com.hourglass.core.world.WorldPacer
 import kotlin.random.Random
 
@@ -11,7 +14,7 @@ import kotlin.random.Random
  * Owned by [WorldRegistry] rather than by a composable, so the tile on the wall and
  * the focus view are two windows onto the same world instead of two worlds.
  */
-class WorldSession(val world: MineWorld) {
+class WorldSession(val world: World) {
 
     private val pacer = WorldPacer()
 
@@ -62,29 +65,47 @@ object WorldRegistry {
     private val idle = HashMap<TimerRef, WorldSession>()
     private val live = HashMap<TimerRef, Pair<Long, WorldSession>>()
 
-    fun obtain(ref: TimerRef, sessionStartedAt: Long?, durationMillis: Long): WorldSession {
+    fun obtain(
+        ref: TimerRef,
+        sessionStartedAt: Long?,
+        durationMillis: Long,
+        kind: WorldKind
+    ): WorldSession {
         if (sessionStartedAt == null) {
             live.remove(ref)
-            return idle.getOrPut(ref) { create(System.nanoTime() xor ref.hashCode().toLong(), durationMillis) }
+            idle[ref]?.let { if (it.world.kind == kind) return it }
+            return create(kind, System.nanoTime() xor ref.hashCode().toLong(), durationMillis)
+                .also { idle[ref] = it }
         }
 
-        live[ref]?.let { (startedAt, session) -> if (startedAt == sessionStartedAt) return session }
+        live[ref]?.let { (startedAt, session) ->
+            if (startedAt == sessionStartedAt && session.world.kind == kind) return session
+        }
 
         // Adopt the preview the user was looking at, if it has not been touched.
-        val session = idle.remove(ref)?.takeIf { !it.stepped }
-            ?: create(sessionStartedAt, durationMillis)
+        val session = idle.remove(ref)?.takeIf { !it.stepped && it.world.kind == kind }
+            ?: create(kind, sessionStartedAt, durationMillis)
         live[ref] = sessionStartedAt to session
         return session
     }
 
-    private fun create(seed: Long, durationMillis: Long) = WorldSession(
-        MineWorld(
-            width = WORLD_WIDTH,
-            height = WORLD_HEIGHT,
-            seed = seed,
-            richness = MineWorld.richnessFor(durationMillis / 60_000f)
-        )
-    )
+    private fun create(kind: WorldKind, seed: Long, durationMillis: Long): WorldSession {
+        val richness = MineWorld.richnessFor(durationMillis / 60_000f)
+        val world: World = when (kind) {
+            WorldKind.MINE -> MineWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, richness)
+            WorldKind.RIVER -> RiverWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, richness * RIVER_SCALE)
+        }
+        return WorldSession(world)
+    }
+
+    /** A fresh world for a preview, sized for a short demo timer and never registered. */
+    fun sample(kind: WorldKind): WorldSession =
+        create(kind, System.nanoTime(), durationMillis = SAMPLE_DURATION_MILLIS)
+
+    private const val SAMPLE_DURATION_MILLIS = 10 * 60_000L
+
+    /** Jam cells per mine load: a log is quicker work than a seam of ore. */
+    private const val RIVER_SCALE = 5
 
     const val WORLD_WIDTH = 72
     const val WORLD_HEIGHT = 96

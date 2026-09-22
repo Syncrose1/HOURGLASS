@@ -12,6 +12,8 @@ data class QuicksandTaskEntity(
     val name: String,
     val durationMillis: Long,
     val colour: String,
+    /** Which kind of world this timer runs, as a [com.hourglass.core.world.WorldKind] token. */
+    val world: String = "mine",
     val createdAt: Long = System.currentTimeMillis(),
     val isActive: Boolean = true,
     val totalTimeTracked: Long = 0L,

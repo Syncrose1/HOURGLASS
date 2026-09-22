@@ -9,7 +9,17 @@ enum class WorldKind {
     MINE,
 
     /** Beavers dismantle a logjam and let a held-back lake flow down its valley. */
-    RIVER
+    RIVER;
+
+    /** The value persisted with a timer. */
+    val token: String get() = name.lowercase()
+
+    companion object {
+        val DEFAULT = MINE
+
+        fun parse(value: String?): WorldKind =
+            entries.firstOrNull { it.token.equals(value?.trim(), ignoreCase = true) } ?: DEFAULT
+    }
 }
 
 /**

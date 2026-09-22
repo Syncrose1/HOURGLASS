@@ -39,6 +39,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import com.hourglass.ui.world.WorldView
+import com.hourglass.ui.world.WorldRegistry
+import com.hourglass.core.world.WorldKind
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,8 +63,6 @@ import com.hourglass.core.TimeFormat
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRef
 import com.hourglass.core.TimerSand
-import com.hourglass.ui.components.SandDetail
-import com.hourglass.ui.components.SandGlass
 import com.hourglass.ui.components.HourglassTopBar
 import com.hourglass.ui.components.Stepper
 import com.hourglass.ui.theme.HourglassTheme
@@ -75,8 +77,10 @@ import com.hourglass.viewmodel.HourglassViewModel
  * Durations and names are constrained rather than free text — there is no way to
  * enter something the timer cannot honour.
  */
-/** Part-drained, so the preview glass is visibly running rather than merely full. */
-private const val PREVIEW_PROGRESS = 0.3f
+private val PREVIEW_HEIGHT = 168.dp
+
+/** A preview's demo timer, start to finish. */
+private const val PREVIEW_CYCLE_MILLIS = 24_000
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -91,6 +95,7 @@ fun TimerFormScreen(
     var hours by remember { mutableIntStateOf(1) }
     var minutes by remember { mutableIntStateOf(0) }
     var sand by remember { mutableStateOf(TimerSand.DEFAULT) }
+    var world by remember { mutableStateOf(WorldKind.DEFAULT) }
     var kind by remember { mutableStateOf(editing?.kind ?: TimerKind.TASK) }
     var showNameError by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(editing == null) }
@@ -103,6 +108,7 @@ fun TimerFormScreen(
             hours = (definition.durationMillis / 3_600_000L).toInt()
             minutes = ((definition.durationMillis % 3_600_000L) / 60_000L).toInt()
             sand = definition.sand
+            world = definition.world
             kind = ref.kind
         }
         loaded = true
@@ -135,15 +141,15 @@ fun TimerFormScreen(
         ) {
             Spacer(Modifier.height(Spacing.sm))
 
-            // A live glass, in the sand being chosen: the preview is the thing.
-            SandGlass(
-                progress = PREVIEW_PROGRESS,
-                sand = colour,
-                running = true,
-                overtime = false,
-                detail = SandDetail.MEDIUM,
-                key = sand,
-                modifier = Modifier.size(width = 120.dp, height = 160.dp)
+            // The chosen world, running on a demo clock, in the chosen colour. You pick a
+            // world by watching one rather than by reading its name.
+            WorldPreview(
+                kind = world,
+                accent = colour,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(PREVIEW_HEIGHT)
+                    .clip(MaterialTheme.shapes.large)
             )
 
             Spacer(Modifier.height(Spacing.sm))
@@ -160,8 +166,11 @@ fun TimerFormScreen(
             // once created — changing it would orphan the timer's session history.
             if (editing == null) {
                 KindSelector(selected = kind, onSelect = { kind = it }, accent = colour)
-                Spacer(Modifier.height(Spacing.xl))
+                Spacer(Modifier.height(Spacing.md))
             }
+
+            WorldSelector(selected = world, onSelect = { world = it }, accent = colour)
+            Spacer(Modifier.height(Spacing.xl))
 
             OutlinedTextField(
                 value = name,
@@ -252,9 +261,9 @@ fun TimerFormScreen(
                         return@Button
                     }
                     if (editing == null) {
-                        viewModel.create(kind, name, hours, minutes, sand)
+                        viewModel.create(kind, name, hours, minutes, sand, world)
                     } else {
-                        viewModel.update(editing, name, hours, minutes, sand)
+                        viewModel.update(editing, name, hours, minutes, sand, world)
                     }
                     onDone()
                 },
@@ -395,4 +404,87 @@ private fun SandSwatch(swatch: Color, selected: Boolean, onSelect: () -> Unit) {
             )
         }
     }
+}
+
+/** Which world the timer builds. Same shape as the kind pills, so the form stays one voice. */
+@Composable
+private fun WorldSelector(
+    selected: WorldKind,
+    onSelect: (WorldKind) -> Unit,
+    accent: Color
+) {
+    val colors = HourglassTheme.colors
+    val onAccent = if (accent.luminance() > 0.55f) colors.textPrimary else Color.White
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CircleShape)
+            .background(colors.surfaceMuted)
+            .padding(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+    ) {
+        WorldKind.entries.forEach { option ->
+            val isSelected = option == selected
+            val background by animateColorAsState(
+                targetValue = if (isSelected) accent else Color.Transparent,
+                animationSpec = tween(durationMillis = 220),
+                label = "world_background"
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(CircleShape)
+                    .background(background)
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.RadioButton,
+                        onClick = { onSelect(option) }
+                    )
+                    .padding(vertical = Spacing.md),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(
+                        when (option) {
+                            WorldKind.MINE -> R.string.world_mine
+                            WorldKind.RIVER -> R.string.world_river
+                        }
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isSelected) onAccent else colors.textSecondary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A throwaway world of the chosen kind, played through a short demo timer on repeat.
+ * Not registered anywhere: it is a sample, not the world the timer will get.
+ */
+@Composable
+private fun WorldPreview(kind: WorldKind, accent: Color, modifier: Modifier = Modifier) {
+    var cycle by remember { mutableIntStateOf(0) }
+    val session = remember(kind, cycle) { WorldRegistry.sample(kind) }
+    val started = remember(session) { System.currentTimeMillis() }
+    var progress by remember(session) { mutableStateOf(0f) }
+
+    LaunchedEffect(session) {
+        while (true) {
+            withFrameMillis { }
+            progress = (System.currentTimeMillis() - started).toFloat() / PREVIEW_CYCLE_MILLIS
+            if (progress >= 1.1f) {
+                cycle++
+                return@LaunchedEffect
+            }
+        }
+    }
+
+    WorldView(
+        session = session,
+        mineral = accent,
+        running = true,
+        timerProgress = progress,
+        modifier = modifier
+    )
 }

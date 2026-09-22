@@ -12,6 +12,8 @@ data class TaskEntity(
     val durationMillis: Long,
     /** `#AARRGGBB`, chosen from the timer palette. */
     val colour: String,
+    /** Which kind of world this timer runs, as a [com.hourglass.core.world.WorldKind] token. */
+    val world: String = "mine",
     val createdAt: Long = System.currentTimeMillis(),
     /** Archived timers stay in the table so their session history keeps its name. */
     val isActive: Boolean = true,

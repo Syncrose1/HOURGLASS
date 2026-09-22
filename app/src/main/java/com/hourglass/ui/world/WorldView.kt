@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.hourglass.core.world.Mat
+import com.hourglass.core.world.RiverMat
+import com.hourglass.core.world.WorldKind
 import com.hourglass.ui.components.lerp
 import com.hourglass.ui.theme.HourglassTheme
 import kotlin.math.max
@@ -54,7 +56,8 @@ fun WorldView(
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val cells = remember(world) { IntArray(world.width * world.height) }
     val pixels = remember(world) { IntArray(world.width * world.height) }
-    val palette = remember(mineral, colors.isDark, world) { shadedByDepth(minePalette(mineral), world.height) }
+    val look = remember(mineral, world.kind) { lookFor(world.kind, mineral) }
+    val palette = remember(look, world) { shadedByDepth(look, world.height) }
 
     val skyTop = lerp(colors.duskTop, colors.backdropTop, if (colors.isDark) 0.15f else 0.55f)
     val skyBottom = lerp(colors.accentSoft, colors.backdropTop, if (colors.isDark) 0.1f else 0.35f)
@@ -78,8 +81,9 @@ fun WorldView(
         frame
 
         world.renderInto(cells)
+        val slots = look.colours.size
         for (index in cells.indices) {
-            pixels[index] = palette[(index / world.width) * Mat.COUNT + cells[index]]
+            pixels[index] = palette[(index / world.width) * slots + cells[index]]
         }
         bitmap.setPixels(pixels, 0, world.width, 0, 0, world.width, world.height)
 
@@ -99,6 +103,47 @@ fun WorldView(
             filterQuality = FilterQuality.None
         )
     }
+}
+
+/** How a kind of world is coloured: one colour per slot, and which slots stay bright. */
+private class WorldLook(val colours: IntArray, val exempt: Set<Int>)
+
+private fun lookFor(kind: WorldKind, accent: Color): WorldLook = when (kind) {
+    WorldKind.MINE -> WorldLook(
+        minePalette(accent),
+        setOf(Mat.SKY, Mat.MINER, Mat.MINER_LOADED, Mat.MINERAL, Mat.MINERAL_BRIGHT)
+    )
+    WorldKind.RIVER -> WorldLook(
+        riverPalette(accent),
+        setOf(RiverMat.SKY, RiverMat.BEAVER, RiverMat.BEAVER_LOADED, RiverMat.WATER_SURFACE)
+    )
+}
+
+/**
+ * A valley in daylight. The timer's colour rides on the beavers' loads, so the wood
+ * leaving the jam is visibly this timer's work.
+ */
+private fun riverPalette(accent: Color): IntArray {
+    val slots = IntArray(RiverMat.COUNT)
+    fun set(slot: Int, colour: Color) {
+        slots[slot] = colour.toArgb()
+    }
+    set(RiverMat.SKY, Color.Transparent)
+    set(RiverMat.AIR, Color(0xFF1B130D))
+    set(RiverMat.EARTH, Color(0xFF8A6A48))
+    set(RiverMat.EARTH_DARK, Color(0xFF735638))
+    set(RiverMat.ROCK, Color(0xFF5A4E46))
+    set(RiverMat.WATER, Color(0xFF3F86B8))
+    set(RiverMat.WATER_SURFACE, Color(0xFF7FB6DA))
+    set(RiverMat.LOG, Color(0xFF7B5433))
+    set(RiverMat.LOG_DARK, Color(0xFF5E3F25))
+    set(RiverMat.STICK, Color(0xFFA07C52))
+    set(RiverMat.MUD, Color(0xFF4E3B2A))
+    set(RiverMat.GRASS_DRY, Color(0xFFB59A5E))
+    set(RiverMat.GRASS, Color(0xFF5E9A3E))
+    set(RiverMat.BEAVER, Color(0xFF3A2414))
+    set(RiverMat.BEAVER_LOADED, lerp(accent, Color.White, 0.2f))
+    return slots
 }
 
 /**
@@ -134,16 +179,16 @@ private fun minePalette(mineral: Color): IntArray {
  * One palette per row, darkening toward the bottom, so the ground reads as depth
  * rather than as flat bands. Miners and seams are exempt: they are what you look for.
  */
-private fun shadedByDepth(palette: IntArray, height: Int): IntArray {
-    val table = IntArray(height * Mat.COUNT)
+private fun shadedByDepth(look: WorldLook, height: Int): IntArray {
+    val slots = look.colours.size
+    val table = IntArray(height * slots)
     for (y in 0 until height) {
         val darkening = DEPTH_DARKENING * y / height
-        for (slot in 0 until Mat.COUNT) {
-            val base = Color(palette[slot])
-            val exempt = slot == Mat.SKY || slot == Mat.MINER || slot == Mat.MINER_LOADED ||
-                Mat.isMineral(slot)
-            table[y * Mat.COUNT + slot] =
-                if (exempt) palette[slot] else lerp(base, Color.Black, darkening).toArgb()
+        for (slot in 0 until slots) {
+            val base = look.colours[slot]
+            table[y * slots + slot] =
+                if (slot in look.exempt) base
+                else lerp(Color(base), Color.Black, darkening).toArgb()
         }
     }
     return table

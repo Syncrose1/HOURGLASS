@@ -109,8 +109,8 @@ fun FocusScreen(
 
             // The world the timer is building. It fills the screen: this is the
             // thing to watch, and the only thing on it.
-            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis) {
-                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis)
+            val session = remember(card.ref, card.sessionStartedAt, card.durationMillis, card.world) {
+                WorldRegistry.obtain(card.ref, card.sessionStartedAt, card.durationMillis, card.world)
             }
             WorldView(
                 session = session,
