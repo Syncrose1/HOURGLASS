@@ -64,6 +64,25 @@ class WorldSnapshots {
         }
     }
 
+    @Test
+    fun sky() {
+        val dir = outputDir()
+        val sky = DaySky(96, 14)
+        val buffer = IntArray(96 * 14)
+        listOf(0.1f, 0.5f, 0.75f, 0.92f, 1f).forEachIndexed { i, spent ->
+            sky.render(buffer, spent, 0)
+            writeArgb(buffer, 96, 14, File(dir, "sky-$i.png"))
+        }
+    }
+
+    private fun writeArgb(argb: IntArray, width: Int, height: Int, file: File) {
+        // One slot per pixel, so the ordinary writer can be reused.
+        val slots = IntArray(argb.size) { it }
+        val table = IntArray(height * argb.size)
+        for (y in 0 until height) for (i in argb.indices) table[y * argb.size + i] = argb[i]
+        write(slots, width, height, file, table, -1, argb.size)
+    }
+
     /** Runs a five-minute timer and writes the world at checkpoints through it. */
     private fun render(world: World, name: String, dir: File) {
         val palette = Palettes.forKind(world.kind, AMBER)
