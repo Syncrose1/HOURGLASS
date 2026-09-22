@@ -1,9 +1,12 @@
 <resources>
+    <!--
+      Launch theme only. Everything after the first frame is drawn by Compose, so this
+      exists purely so the launch window matches the app backdrop instead of flashing
+      white. The colour resource has a values-night variant.
+    -->
     <style name="Theme.Hourglass" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowBackground">@color/window_bg</item>
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
 </resources>

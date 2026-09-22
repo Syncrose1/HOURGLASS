@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <full-backup-content>
-        <include domain="database" path="." />
-        <exclude domain="sharedpref" path="." />
-    </full-backup-content>
-</resources>
+<!-- Android 11 and below. Timers and settings restore; nothing else is kept. -->
+<full-backup-content>
+    <include domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>
