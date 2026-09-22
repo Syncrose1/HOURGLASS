@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -272,6 +273,23 @@ fun TimerFormScreen(
                     ),
                     style = MaterialTheme.typography.labelLarge
                 )
+            }
+
+            if (editing != null) {
+                Spacer(Modifier.height(Spacing.md))
+                TextButton(
+                    onClick = {
+                        viewModel.archive(editing)
+                        onDone()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = stringResource(R.string.remove_timer, name),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.textMuted
+                    )
+                }
             }
 
             Spacer(Modifier.height(Spacing.xxl))

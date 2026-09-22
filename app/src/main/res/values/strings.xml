@@ -3,19 +3,13 @@
     <string name="app_name">HOURGLASS</string>
 
     <!-- Home -->
-    <string name="today_sand_timers">Today\'s sand timers</string>
     <string name="quicksand">Quicksand</string>
     <string name="sand_timer">Sand timer</string>
     <string name="new_timer">New timer</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
-    <string name="your_day_awaits">Your day awaits</string>
-    <string name="empty_state_hint">Add a sand timer for the work you planned, or quicksand for everything that comes up.</string>
-    <string name="focused_today">%1$s of focus banked today</string>
-    <string name="allocation_and_sessions">%1$s allocated · %2$d completed</string>
 
     <!-- Timer controls -->
-    <string name="start">Start</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="stop">Stop</string>
@@ -40,9 +34,6 @@
     <!-- Bedtime -->
     <string name="bedtime">Bedtime</string>
     <string name="wake_time">Wake time</string>
-    <string name="soon">SOON</string>
-    <string name="until_bedtime">until bedtime</string>
-    <string name="get_some_rest">Get some rest</string>
     <string name="projected_sleep">Projected sleep</string>
     <string name="sleep_short_hint">That is a short night. Moving bedtime earlier buys back the difference.</string>
     <string name="sleep_good_hint">A full night. Bank the time and let the sand run out.</string>
@@ -56,28 +47,30 @@
     <string name="expand">Expand</string>
     <string name="collapse">Collapse</string>
 
-    <!-- Insights -->
-    <string name="insights">Insights</string>
-    <string name="banked_this_week">Banked this week</string>
-    <string name="daily_focus">Daily focus</string>
-    <string name="where_it_went">Where it went</string>
+    <!-- Desert -->
+    <string name="desert">Desert</string>
+    <string name="total_banked">banked</string>
+    <string name="desert_empty_hint">Finish a timer and its sand pours here. The dune is built one session at a time.</string>
     <string name="sessions">Sessions</string>
     <string name="on_time">On time</string>
     <string name="streak">Streak</string>
     <string name="streak_days">%1$d d</string>
     <string name="percent">%1$d%%</string>
     <string name="overran_count">%1$d ran over</string>
-    <string name="no_sessions_yet">Nothing banked yet</string>
-    <string name="no_sessions_hint">Run a timer through to the end and it will show up here.</string>
+
+    <!-- Focus -->
+    <string name="tap_to_pause">Tap anywhere to pause</string>
+    <string name="tap_to_resume">Tap anywhere to resume</string>
+    <string name="finish_session">Finish session</string>
 
     <!-- Editing -->
     <string name="edit_timer">Edit timer</string>
-    <string name="edit_timer_named">Edit %1$s</string>
     <string name="save_changes">Save changes</string>
 
     <!-- Rest -->
-    <string name="past_bedtime_title">It is past your bedtime</string>
-    <string name="past_bedtime_body">This will still be here tomorrow. Stopping now protects the night you planned.</string>
+    <string name="day_notice">Day countdown</string>
+    <string name="day_notice_body">A standing notification with how much of your day is left, to the quarter hour.</string>
+    <string name="day_over_body">Your day is over. Rest well.</string>
 
     <!-- Notification -->
     <string name="channel_timers_name">Running timers</string>
@@ -86,6 +79,8 @@
     <string name="channel_complete_description">Alerts you once when a timer reaches the time you allocated it.</string>
     <string name="notification_complete_title">%1$s is done</string>
     <string name="notification_complete_body">You banked the full %1$s. Anything past this counts as overtime.</string>
+    <string name="channel_day_name">Day countdown</string>
+    <string name="channel_day_description">A standing note of how much of your day is left before bedtime.</string>
     <string name="notification_remaining">%1$s remaining</string>
     <string name="notification_paused">Paused at %1$s</string>
     <string name="notification_overtime">Overtime %1$s</string>

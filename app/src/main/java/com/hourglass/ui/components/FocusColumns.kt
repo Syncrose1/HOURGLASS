@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -26,10 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hourglass.core.DayTotal
-import com.hourglass.core.TaskTotal
 import com.hourglass.core.TimeFormat
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
@@ -140,150 +136,6 @@ fun FocusColumns(
                     modifier = Modifier.weight(1f)
                 )
             }
-        }
-    }
-}
-
-/**
- * Time banked per task. Horizontal because task names are long, and each row is
- * labelled with its name — identity never rests on the sand colour alone.
- */
-@Composable
-fun TaskBars(
-    tasks: List<TaskTotal>,
-    modifier: Modifier = Modifier
-) {
-    val colors = HourglassTheme.colors
-    val peak = tasks.maxOfOrNull { it.millis } ?: 0L
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        tasks.forEach { task ->
-            val fraction = if (peak <= 0L) 0f else task.millis.toFloat() / peak
-            val width by animateFloatAsState(
-                targetValue = fraction,
-                animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
-                label = "bar_width"
-            )
-            val fill = if (task.isOther) colors.chartMuted else colors.sand(task.sand)
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clearAndSetSemantics {
-                        contentDescription =
-                            "${task.name}: ${TimeFormat.compact(task.millis)}, " +
-                                "${task.sessions} sessions"
-                    }
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = task.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(Modifier.width(Spacing.sm))
-                    Text(
-                        text = TimeFormat.compact(task.millis),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.textSecondary
-                    )
-                }
-                Spacer(Modifier.height(Spacing.xs))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(topEnd = MARK_RADIUS, bottomEnd = MARK_RADIUS))
-                        .background(colors.chartGrid)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(width.coerceAtLeast(0.02f))
-                            .height(8.dp)
-                            .clip(
-                                RoundedCornerShape(
-                                    topEnd = MARK_RADIUS,
-                                    bottomEnd = MARK_RADIUS
-                                )
-                            )
-                            .background(fill)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * The one number the screen leads with. Proportional figures, not tabular: at this
- * size tabular digits look loose.
- */
-@Composable
-fun HeroFigure(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    val colors = HourglassTheme.colors
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.textMuted
-        )
-        Spacer(Modifier.height(Spacing.xs))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.displayLarge,
-            color = colors.textPrimary,
-            maxLines = 1
-        )
-    }
-}
-
-/** `label · value`, with an optional supporting line. No plot, so no hover layer. */
-@Composable
-fun StatTile(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    support: String? = null
-) {
-    val colors = HourglassTheme.colors
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surface)
-            .padding(vertical = Spacing.md, horizontal = Spacing.md)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.textMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(Modifier.height(Spacing.xs))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            color = colors.textPrimary,
-            maxLines = 1
-        )
-        if (support != null) {
-            Text(
-                text = support,
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.textMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }

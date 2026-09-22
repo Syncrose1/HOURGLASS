@@ -29,6 +29,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -118,6 +120,15 @@ fun SettingsScreen(
                 onChange = viewModel::setWakeTime
             )
 
+            Spacer(Modifier.height(Spacing.md))
+
+            ToggleRow(
+                title = stringResource(R.string.day_notice),
+                body = stringResource(R.string.day_notice_body),
+                checked = settings.dayNotice,
+                onCheckedChange = viewModel::setDayNotice
+            )
+
             Spacer(Modifier.height(Spacing.lg))
 
             SleepProjection(minutes = settings.sleepMinutes)
@@ -168,6 +179,51 @@ fun SettingsScreen(
 }
 
 private enum class Editing { BEDTIME, WAKE }
+
+/** A labelled switch on the same card chrome as everything else on this screen. */
+@Composable
+private fun ToggleRow(
+    title: String,
+    body: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colors = HourglassTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(colors.surface)
+            .border(1.dp, colors.outline, MaterialTheme.shapes.large)
+            .padding(Spacing.xl),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary
+            )
+        }
+        Spacer(Modifier.width(Spacing.md))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.onAccent,
+                checkedTrackColor = colors.accent,
+                uncheckedTrackColor = colors.surfaceMuted,
+                uncheckedBorderColor = colors.outlineStrong
+            )
+        )
+    }
+}
 
 /** A time, shown large, with an inline stepper editor that slides out when tapped. */
 @Composable

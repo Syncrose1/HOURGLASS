@@ -74,6 +74,39 @@ object Bedtime {
         }
     }
 
+    /**
+     * The granularity the day's remaining time is reported at.
+     *
+     * Minute-by-minute precision reads as noise: "2 hours 13 minutes" and "2 hours 7
+     * minutes" are indistinguishable as feelings, so the countdown spends its
+     * resolution on impact instead. Quarter-hours make the display step, and a step
+     * from "2 hours 15 minutes" to "2 hours" registers as something actually lost.
+     */
+    const val ROUNDING_MINUTES = 15
+
+    /**
+     * Floors [minutes] to a quarter-hour.
+     *
+     * Floor, not nearest: a countdown that rounds up tells you that you have time you
+     * do not have, and this app has no business doing that. Flooring means the figure
+     * is a promise the clock can keep — you always have at least what it says.
+     */
+    fun roundForDisplay(minutes: Int): Int =
+        if (minutes <= 0) 0 else (minutes / ROUNDING_MINUTES) * ROUNDING_MINUTES
+
+    /**
+     * The persistent notification's wording, e.g. `Your day ends in 2 hours 15 minutes`.
+     * Phrased as the day ending rather than as a bedtime, because a bedtime is
+     * something you can negotiate with and the end of a day is not.
+     */
+    fun describeDayRemaining(minutesUntilBedtime: Int): String {
+        val rounded = roundForDisplay(minutesUntilBedtime)
+        if (rounded <= 0) return DAY_OVER
+        return "Your day ends in ${describe(rounded)}"
+    }
+
+    const val DAY_OVER = "Your day is over"
+
     /** Compact sleep projection, e.g. `8h 30m`. */
     fun describeSleep(minutes: Int): String {
         val hours = minutes / 60

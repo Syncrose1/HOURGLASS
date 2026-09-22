@@ -34,6 +34,21 @@
             </intent-filter>
         </activity>
 
+        <!--
+          WorkManager is initialised on demand from HourglassApp so it can be given
+          Hilt's worker factory; the default startup initializer is removed here.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <service
             android:name=".service.TimerService"
             android:exported="false"

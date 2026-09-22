@@ -203,6 +203,9 @@ class HourglassRepository @Inject constructor(
     companion object {
         const val KEY_BEDTIME = "bedtime"
         const val KEY_WAKE_TIME = "wakeTime"
+
+        /** "off" silences the standing day-remaining notification. */
+        const val KEY_DAY_NOTICE = "dayNotice"
         private const val KEY_ACTIVE_TIMER = "activeTimer"
 
         /** Below one second a run is a misfire, not a session. */

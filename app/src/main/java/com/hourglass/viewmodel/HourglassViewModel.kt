@@ -13,6 +13,7 @@ import com.hourglass.data.repository.TimerDefinition
 import com.hourglass.timer.TimerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -42,11 +43,15 @@ data class HomeState(
     val sandTimers: List<TimerCard> = emptyList(),
     val quicksand: List<TimerCard> = emptyList(),
     val focusedTodayMillis: Long = 0L,
+    /** Minutes until bedtime, for the tile and the day's framing. */
+    val minutesUntilBedtime: Int = 0,
     /**
      * True when a timer is running and the clock has crossed into the night.
      * Drives the one nudge the app ever gives unprompted.
      */
-    val runningPastBedtime: Boolean = false
+    val runningPastBedtime: Boolean = false,
+    /** The timer that has taken over the screen, if any. */
+    val focusedCard: TimerCard? = null
 ) {
     val isEmpty: Boolean get() = sandTimers.isEmpty() && quicksand.isEmpty()
 }
@@ -60,13 +65,24 @@ class HourglassViewModel @Inject constructor(
     /** Emitted once per timer that reaches its allocation; the UI answers with a haptic. */
     val completions: Flow<ActiveTimer> = controller.completions
 
+    /**
+     * The timer currently filling the screen.
+     *
+     * Focus is UI state, not timer state: a timer can be running with the app closed,
+     * and closing the focus view pauses it rather than the other way round.
+     */
+    private val _focusedRef = MutableStateFlow<TimerRef?>(null)
+
     val homeState: StateFlow<HomeState> = combine(
         repository.observeTimers(TimerKind.TASK),
         repository.observeTimers(TimerKind.QUICKSAND),
         controller.state,
         repository.observeRecentSessions(),
-        repository.observeSettings()
-    ) { tasks, quicksand, active, sessions, settings ->
+        combine(repository.observeSettings(), _focusedRef) { settings, focused ->
+            settings to focused
+        }
+    ) { tasks, quicksand, active, sessions, settingsAndFocus ->
+        val (settings, focusedRef) = settingsAndFocus
         val startOfDay = startOfToday()
         val bedtime = TimeOfDay.parseOr(
             settings[HourglassRepository.KEY_BEDTIME],
@@ -76,9 +92,15 @@ class HourglassViewModel @Inject constructor(
             settings[HourglassRepository.KEY_WAKE_TIME],
             TimeOfDay.DEFAULT_WAKE
         )
+        val sandCards = tasks.map { it.toCard(active) }
+        val quickCards = quicksand.map { it.toCard(active) }
         HomeState(
-            sandTimers = tasks.map { it.toCard(active) },
-            quicksand = quicksand.map { it.toCard(active) },
+            sandTimers = sandCards,
+            quicksand = quickCards,
+            minutesUntilBedtime = Bedtime.minutesUntil(nowMinuteOfDay(), bedtime),
+            focusedCard = focusedRef?.let { ref ->
+                (sandCards + quickCards).firstOrNull { it.ref == ref }
+            },
             focusedTodayMillis = sessions
                 .filter { it.endedAt >= startOfDay }
                 .sumOf { it.elapsedMillis } +
@@ -96,16 +118,37 @@ class HourglassViewModel @Inject constructor(
         controller.restore()
     }
 
-    fun start(ref: TimerRef) = controller.start(ref)
+    /**
+     * Hands the screen to a timer and sets it running. Tapping a tile is the only way
+     * to start anything, so opening and starting are deliberately the same action.
+     */
+    fun focus(ref: TimerRef) {
+        _focusedRef.value = ref
+        val active = controller.state.value
+        when {
+            active?.ref != ref -> controller.start(ref)
+            active.isPaused -> controller.resume()
+            else -> Unit // already running; just show it
+        }
+    }
 
-    fun pause() = controller.pause()
+    /** Tap in focus, or system back: pause and return to the wall. */
+    fun pauseAndClose() {
+        controller.pause()
+        _focusedRef.value = null
+    }
 
-    fun resume() = controller.resume()
+    /** Ends the session, banks it, and returns to the wall. */
+    fun finish() {
+        controller.stop()
+        _focusedRef.value = null
+    }
 
     fun stop() = controller.stop()
 
     fun archive(ref: TimerRef) {
         viewModelScope.launch {
+            if (_focusedRef.value == ref) _focusedRef.value = null
             if (controller.state.value?.ref == ref) controller.stop()
             repository.archive(ref)
         }

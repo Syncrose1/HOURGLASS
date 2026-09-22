@@ -5,11 +5,24 @@ respect your rest.
 
 ## Features
 
-### 🏖️ Sand timers
-Dedicated timers for the work you planned — "Flashcards, 2 hours", "Question bank,
-1 hour". Each one is a card with a drawn sandglass that drains in real time.
-Start, pause, resume and stop; only one timer runs at a time, and starting a new one
-files the previous session before it begins.
+### 🧱 One wall, no scrolling
+Every timer is a tile on a single screen. Add more and the tiles get smaller — they
+never spill into a list you have to scroll. That is the point rather than a limit: a
+wall that visibly gets denser is its own argument for having fewer timers, which a
+scrolling list never makes.
+
+### 👆 One gesture
+Tap a tile and that timer takes the whole screen and starts running. Tap again and it
+pauses and hands you back the wall. There are no buttons on a tile and nothing to
+adjust while a timer runs — if you want to change something, stop the timer first.
+Long-press a tile to edit it, which you can only do from the wall, which means only
+when nothing is running.
+
+### 🏖️ Real falling sand
+The glass is a cellular automaton, not an animation. Grains fall, pile, slump and find
+their angle of repose from one rule applied to every cell. Tilt the phone and the sand
+falls the way you tilt it; drag a finger through a pile and it collapses. The drain is
+metered by the timer, so what you are watching is the elapsed time itself.
 
 ### ⏳ Quicksand
 Lightweight timers for whatever comes up. Same machinery, deliberately smaller and
@@ -24,11 +37,13 @@ Set a bedtime and a wake time. The home screen leads with a dusk-gradient card c
 down in plain language, deepening in tone and lighting its ring through the last two
 hours before bed. Settings projects the resulting night's sleep and flags a short one.
 
-### 📊 Habit tracking
-Every completed run is written to a session log with its planned duration, elapsed time
-and overtime — and the Insights screen reads it back: the week's total, a column per
-day with today picked out, where the time actually went per task, your streak, and how
-often a session runs over.
+### 🏜️ The desert
+Forest grows a wood; this pours a dune. Every finished session becomes a visible band
+of sand in the colour of the timer that earned it, oldest at the base, so the pile is
+a cross-section of how your time was actually spent rather than a score. It grows on a
+log scale — the first hour reads as real progress and the five-hundredth still adds
+something — and landmarks appear on the slope at thresholds you cross. The only way to
+add to it is to run a timer through to the end.
 
 ### 🔔 Time's up
 A timer that reaches its allocation says so — a one-shot alert on its own notification
@@ -36,10 +51,12 @@ channel, plus a haptic if the app is open. It does not stop anything: the timer 
 running into overtime, because you chose the allocation, you did not agree to be cut
 off at it.
 
-### 🌒 It cuts both ways
-"Respect your rest" is not decoration. If a timer is still running after your bedtime,
-the home screen says so once — quietly, with the stop button right there. It never
-interrupts and never stops anything itself.
+### 🌙 Your day ends in 2 hours 15 minutes
+A standing notification says how much of your day is left, in plain words, floored to
+the quarter hour. The rounding is the feature: "2 hours 13 minutes" sliding to "2 hours
+7 minutes" is not a feeling, but "2 hours 15 minutes" holding still and then dropping
+to "2 hours" is a loss you notice. Flooring rather than rounding to nearest means the
+figure is a promise the clock can keep — you always have at least what it says.
 
 ### 🔔 Ongoing notification
 A running timer holds a foreground-service notification with the task name, the time
@@ -64,19 +81,19 @@ swapped out or the device rebooting — the run is journalled and restored on ne
 - **Full dark theme.** Every colour is a semantic token resolved per theme, so nothing
   is hard-coded to a light background.
 
-`ui/preview/ComponentPreviews.kt` renders each card in both themes and in every state
-if you want to look before building.
+`ui/preview/ComponentPreviews.kt` renders the wall at three densities, the dune day and
+night, and every sand in both themes, if you want to look before building.
 
 ## Architecture
 
 | Layer | What lives there |
 |---|---|
-| `core/` | Pure Kotlin: duration formatting, bedtime arithmetic, the timer state machine, the insights aggregation. No Android imports, fully unit tested. |
+| `core/` | Pure Kotlin: the sand automaton, the sandglass, duration formatting, bedtime arithmetic, the timer state machine, tiling maths, the desert. No Android imports, 92 unit tests. |
 | `data/` | Room entities, DAOs, and `HourglassRepository` — the single door onto storage. |
 | `timer/` | `TimerController`, a process singleton that owns the one running timer, ticks it, and journals it. |
 | `service/` | `TimerService`, a renderer for the controller's state as an ongoing notification. |
 | `viewmodel/` | Screen state, assembled from the repository and the controller. |
-| `ui/` | Theme tokens, drawn components, charts, screens, navigation. |
+| `ui/` | Theme tokens, the sand renderer, tiles, screens, navigation. |
 
 Kotlin + Jetpack Compose, MVVM, Hilt for injection, Room for persistence.
 

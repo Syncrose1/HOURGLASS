@@ -96,3 +96,53 @@ class PastBedtimeTest {
         assertFalse(past(23, bed = bed, wake = wake))
     }
 }
+
+class DayRemainingTest {
+
+    @Test
+    fun `quarter hours floor rather than round`() {
+        assertEquals(135, Bedtime.roundForDisplay(135))
+        assertEquals(135, Bedtime.roundForDisplay(149))
+        assertEquals(120, Bedtime.roundForDisplay(134))
+        assertEquals(120, Bedtime.roundForDisplay(120))
+        assertEquals(0, Bedtime.roundForDisplay(14))
+        assertEquals(0, Bedtime.roundForDisplay(0))
+        assertEquals(0, Bedtime.roundForDisplay(-30))
+    }
+
+    @Test
+    fun `the figure is never larger than the time actually left`() {
+        (0..1440).forEach { minutes ->
+            assertTrue(Bedtime.roundForDisplay(minutes) <= minutes)
+        }
+    }
+
+    @Test
+    fun `minutes that feel the same read the same`() {
+        // The whole point of the rounding: 2h13 and 2h07 are not different feelings.
+        assertEquals(Bedtime.roundForDisplay(133), Bedtime.roundForDisplay(127))
+        // And the step down to two hours lands as an event.
+        assertEquals(135, Bedtime.roundForDisplay(136))
+        assertEquals(120, Bedtime.roundForDisplay(134))
+    }
+
+    @Test
+    fun `the display only ever counts down`() {
+        var previous = Int.MAX_VALUE
+        (1440 downTo 0).forEach { minutes ->
+            val shown = Bedtime.roundForDisplay(minutes)
+            assertTrue("went up at $minutes", shown <= previous)
+            previous = shown
+        }
+    }
+
+    @Test
+    fun `wording is natural and names the day, not the bedtime`() {
+        assertEquals("Your day ends in 2 hours 15 minutes", Bedtime.describeDayRemaining(139))
+        assertEquals("Your day ends in 2 hours", Bedtime.describeDayRemaining(125))
+        assertEquals("Your day ends in 45 minutes", Bedtime.describeDayRemaining(52))
+        assertEquals("Your day ends in 1 hour", Bedtime.describeDayRemaining(60))
+        assertEquals(Bedtime.DAY_OVER, Bedtime.describeDayRemaining(10))
+        assertEquals(Bedtime.DAY_OVER, Bedtime.describeDayRemaining(0))
+    }
+}

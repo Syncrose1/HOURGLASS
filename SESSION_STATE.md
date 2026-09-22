@@ -15,6 +15,10 @@ core/        pure Kotlin, no Android imports, unit tested
   Timer         TimerKind / TimerRef / ActiveTimer / TimerRecord
   TimerSand     the eight palette tokens, with legacy-hex parsing
   Insights      session log -> daily totals, task ranking, streak, rates
+  SandGrid      the falling-sand automaton: one rule, walls, arbitrary gravity
+  HourglassSim  a vessel built from SandGrid, with a timer-metered drain
+  TileLayout    how many columns fit, and how much detail a tile can carry
+  Desert        sessions -> a dune: height, strata, landmarks
 
 data/
   entity/       TaskEntity, QuicksandTaskEntity, TimerSessionEntity, SettingsEntity
@@ -25,8 +29,9 @@ data/
 di/            AppModule: database, DAOs, the application-scoped CoroutineScope
 timer/         TimerController — process singleton, owns the running timer
 service/       TimerService + NotificationHelper — render controller state
-viewmodel/     HourglassViewModel (home), SettingsViewModel, InsightsViewModel
-ui/            theme tokens, drawn components, charts, screens, navigation, previews
+work/          DayRemainingWorker — quarter-hourly day countdown
+viewmodel/     HourglassViewModel (wall + focus), SettingsViewModel, DesertViewModel
+ui/            theme tokens, sand renderer, tiles, screens, navigation, previews
 ```
 
 ### Where the timer lives
@@ -38,6 +43,28 @@ readers. This is deliberate: a timer is not a property of a screen.
 Elapsed time is banked as `accumulatedMillis` plus a wall-clock anchor for the current
 run, so `elapsedAt(now)` reconstructs the truth after the process has been away — which
 is what makes restore-after-reboot work without a boot receiver.
+
+### The wall and focus
+The home screen is a fixed grid with no scrolling: `TileLayout.shapeFor` picks the
+column count whose tiles come closest to the target aspect, and `TileDetail` thins the
+tile's contents as it shrinks. Focus is *not* a navigation destination — it is a field
+on `HomeState`. That is what lets tapping out of it pause the timer instead of leaving
+one running behind a back stack entry.
+
+### The sand
+`SandGrid` is a classic falling-sand automaton: a grain moves along gravity, else to
+one of the two diagonals either side, chosen at random. The angle of repose, slumping
+and draining all emerge from that one rule. Gravity is any of eight directions, so the
+accelerometer can steer it.
+
+`HourglassSim` wraps a grid in a vessel. Its waist is **fully walled**: an open neck
+would let gravity carry grains through at its own pace, and the glass would then be an
+ornament rather than a readout. Everything crosses via `releaseOne`, metered by
+`syncTo(progress)` against the timer.
+
+Rendering goes through a bitmap the size of the grid, scaled up with filtering off —
+one draw call per frame, and crisp square grains. Thousands of rects would not hold a
+frame rate.
 
 ### Identity
 Sand timers and quicksand are separate tables whose ids both start at 1, so an id alone
@@ -55,9 +82,11 @@ because CVD collapses hue and leaves lightness intact. The light set alternates
 L 0.50/0.76, the dark set L 0.49/0.66 inside its narrower band.
 
 ## Verification status
-- `core/` is covered by 42 JVM unit tests in `app/src/test/java/com/hourglass/core/`
-  (formatting, bedtime arithmetic, time parsing, the record state machine, sand
-  tokens, insights aggregation). These run with `./gradlew testDebugUnitTest` and have
+- `core/` is covered by 92 JVM unit tests in `app/src/test/java/com/hourglass/core/`
+  (formatting, bedtime arithmetic and quarter-hour flooring, time parsing, the record
+  state machine, sand tokens, insights aggregation, the sand automaton including grain
+  conservation and the angle of repose, the metered hourglass drain, tiling, the
+  desert). These run with `./gradlew testDebugUnitTest` and have
   been run green.
 - The Android build (`:app:assembleDebug`) has **not** been run since the rewrite —
   the environment it was edited in had no reachable Android SDK. Compile it before
@@ -76,13 +105,15 @@ L 0.50/0.76, the dark set L 0.49/0.66 inside its narrower band.
 4. **Single locale.** All strings are externalised in `strings.xml` but only `en`
    exists. The weekday initials on the insights chart already come from the device
    locale via `DateFormatSymbols`.
-5. **The insights charts have no touch-to-inspect.** Every value is already visible —
-   each task row carries its own figure and the best day is labelled — and both charts
-   expose per-mark descriptions to screen readers, so this is polish rather than a
-   gap. Worth adding if the window ever grows past a week.
-6. **Insights covers a fixed 7-day window.** `Insights.from` already takes
-   `windowDays`, so a range control is a UI change, not a data one.
-7. **Bedtime nudge is passive.** It appears on the home screen when a timer runs past
-   bedtime, but only if the app is open. A scheduled reminder would need
-   `AlarmManager` or WorkManager and a deliberate decision about how much the app is
-   allowed to interrupt.
+5. **The wall has no tested upper bound.** `TileLayout` keeps fitting tiles forever,
+   and past roughly twenty they are glyph-sized. That is intended pressure, not a
+   crash, but nobody has looked at fifty.
+6. **The sand sim runs only in focus.** Tiles use the cheap drawn glass; running a
+   simulation per tile would not hold a frame rate. The dune is drawn, not simulated —
+   pouring new sessions onto it with the automaton is the obvious next flourish.
+7. **Tilt is always on in focus mode.** It has a dead zone and heavy smoothing, but
+   there is no setting to turn it off, and it will be wrong for anyone using the app
+   lying down.
+8. **The day countdown depends on WorkManager's 15-minute floor.** That happens to be
+   exactly the display granularity, so they line up — but the notification can lag a
+   step by up to a quarter hour after a reboot or a doze window.
