@@ -96,6 +96,8 @@ class MineWorld(
 
     override val kind: WorldKind get() = WorldKind.MINE
 
+    override val focusY: Float get() = 0.08f
+
     val minerCount: Int get() = crew.workers.size
     val totalSeams: Int get() = mineralsTotal
     val hauledSeams: Int get() = mineralsDelivered
@@ -442,8 +444,20 @@ class MineWorld(
         private const val SETTLE_EVERY = 3
 
 
-        /** Loads to bury for a timer of this length: longer timers get richer ground. */
+        /**
+         * Loads to bury for a timer of this length.
+         *
+         * Sized so a crew working at an ordinary pace is roughly on the clock. On the
+         * phone, a 20-minute mine with 18 loads was three loads in after half a minute
+         * — far ahead — so the pacer had to throttle the crew almost to a standstill
+         * for minutes while the clock caught up. A pacer can keep any world on time;
+         * it is the size of the job that decides whether the world looks alive.
+         * Long timers still hit the ceiling and run calmer: there is only so much
+         * ground in the frame.
+         */
         fun richnessFor(durationMinutes: Float): Int =
-            (durationMinutes * 0.8f).roundToInt().coerceIn(18, 140)
+            (durationMinutes * LOADS_PER_MINUTE).roundToInt().coerceIn(24, 240)
+
+        private const val LOADS_PER_MINUTE = 6f
     }
 }

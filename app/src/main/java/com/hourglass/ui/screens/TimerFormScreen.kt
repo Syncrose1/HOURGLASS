@@ -77,7 +77,7 @@ import com.hourglass.viewmodel.HourglassViewModel
  * Durations and names are constrained rather than free text — there is no way to
  * enter something the timer cannot honour.
  */
-private val PREVIEW_HEIGHT = 168.dp
+private val PREVIEW_HEIGHT = 240.dp
 
 /** A preview's demo timer, start to finish. */
 private const val PREVIEW_CYCLE_MILLIS = 24_000

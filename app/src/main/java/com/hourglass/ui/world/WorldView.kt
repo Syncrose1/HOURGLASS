@@ -89,7 +89,9 @@ fun WorldView(
 
         drawRect(Brush.verticalGradient(listOf(skyTop, skyBottom)))
 
-        // Crop to fill, like a photograph: never stretch a cell out of square.
+        // Crop to fill, like a photograph: never stretch a cell out of square. Where
+        // the crop falls is the world's call — centring it showed a mine's middle
+        // strata and cut off the headframe, which is where the story is.
         val scale = max(size.width / world.width, size.height / world.height)
         val drawnWidth = (world.width * scale).roundToInt()
         val drawnHeight = (world.height * scale).roundToInt()
@@ -97,7 +99,7 @@ fun WorldView(
             image = image,
             dstOffset = IntOffset(
                 ((size.width - drawnWidth) / 2f).roundToInt(),
-                ((size.height - drawnHeight) / 2f).roundToInt()
+                ((size.height - drawnHeight) * world.focusY).roundToInt()
             ),
             dstSize = IntSize(drawnWidth, drawnHeight),
             filterQuality = FilterQuality.None

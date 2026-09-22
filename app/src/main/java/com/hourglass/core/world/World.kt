@@ -48,6 +48,13 @@ interface World {
     fun renderInto(buffer: IntArray)
 
     /**
+     * Where the story is, top to bottom, for a view that has to crop: 0 keeps the top
+     * of the world in frame, 1 the bottom. A mine's headframe and stockpile are at
+     * the surface; a river's lake, jam and valley sit in the middle under open sky.
+     */
+    val focusY: Float get() = 0.5f
+
+    /**
      * Advances one tick.
      *
      * [effort] scales how much the world's inhabitants get done — above 1 they work

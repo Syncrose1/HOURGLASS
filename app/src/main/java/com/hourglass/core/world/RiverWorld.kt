@@ -96,6 +96,8 @@ class RiverWorld(
 
     override val kind: WorldKind get() = WorldKind.RIVER
 
+    override val focusY: Float get() = 0.62f
+
     val waterCount: Int get() = cells.count { it == RiverMat.WATER }
     val beaverCount: Int get() = crew.workers.size
     val jamTotal: Int get() = woodTotal
