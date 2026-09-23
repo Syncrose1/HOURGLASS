@@ -62,7 +62,10 @@ class DayRemainingNotifier @Inject constructor(
     }
 
     fun cancel() {
-        runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
+        runCatching {
+            NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+            NotificationManagerCompat.from(context).cancel(SUMMARY_ID)
+        }
     }
 
     private fun post(text: String, line: String? = null) {
@@ -92,8 +95,9 @@ class DayRemainingNotifier @Inject constructor(
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            // Its own group, so the system does not bundle it with a running timer's.
-            .setGroup("hourglass.day")
+            // Its own group, with its own summary below, so the system does not sweep it
+            // into a bundle with a running timer's.
+            .setGroup(GROUP)
             .build()
 
         // Checked inline rather than behind a helper: declining the permission should
@@ -106,12 +110,26 @@ class DayRemainingNotifier @Inject constructor(
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+            NotificationManagerCompat.from(context).notify(
+                SUMMARY_ID,
+                NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(text)
+                    .setContentIntent(pending)
+                    .setGroup(GROUP)
+                    .setGroupSummary(true)
+                    .setOngoing(true)
+                    .setSilent(true)
+                    .build()
+            )
         }
     }
 
     companion object {
         const val CHANNEL_ID = "hourglass_day"
         const val NOTIFICATION_ID = 1003
+        private const val SUMMARY_ID = 1005
+        private const val GROUP = "hourglass.day"
         private const val REQUEST_CODE = 2
     }
 }

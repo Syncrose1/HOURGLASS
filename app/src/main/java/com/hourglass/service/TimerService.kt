@@ -140,27 +140,30 @@ class TimerService : Service() {
             return
         }
         val notification = NotificationHelper.build(this, timer)
-        if (!foregrounded) {
+        val promoting = !foregrounded
+        if (promoting) {
             startForeground(NotificationHelper.NOTIFICATION_ID, notification)
             foregrounded = true
-        } else {
-            // Without POST_NOTIFICATIONS this quietly does nothing, which is the right
-            // outcome: the timer itself keeps running either way.
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                NotificationManagerCompat.from(this)
-                    .notify(NotificationHelper.NOTIFICATION_ID, notification)
-            }
+        }
+        // Without POST_NOTIFICATIONS this quietly does nothing, which is the right
+        // outcome: the timer itself keeps running either way.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            val manager = NotificationManagerCompat.from(this)
+            if (!promoting) manager.notify(NotificationHelper.NOTIFICATION_ID, notification)
+            // Its own group summary, so the system does not bundle it with anything.
+            if (promoting) manager.notify(NotificationHelper.SUMMARY_ID, NotificationHelper.buildSummary(this))
         }
     }
 
     private fun stopForegroundAndSelf() {
         // The alert is about a moment that has passed; it should not outlive the timer.
         runCatching {
+            NotificationManagerCompat.from(this).cancel(NotificationHelper.SUMMARY_ID)
             NotificationManagerCompat.from(this).cancel(NotificationHelper.NOTIFICATION_DONE_ID)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

@@ -32,6 +32,9 @@ object NotificationHelper {
     const val CHANNEL_DONE_ID = "hourglass_complete"
 
     const val NOTIFICATION_ID = 1001
+
+    /** The running timer's group summary; see [buildSummary]. */
+    const val SUMMARY_ID = 1004
     const val NOTIFICATION_DONE_ID = 1002
 
     fun createChannel(context: Context) {
@@ -135,6 +138,23 @@ object NotificationHelper {
             .addAction(0, context.getString(R.string.stop), serviceIntent(context, TimerService.ACTION_STOP))
             .build()
     }
+
+    /**
+     * A summary for the timer's own group. A group without one counts as "sparse", and
+     * the system — Samsung most eagerly — sweeps sparse groups from the same app into a
+     * single bundle, which folded the timer in with the day's notice and hid both. A
+     * group with its summary is left alone, and a group of one shows as the one card.
+     */
+    fun buildSummary(context: Context): Notification =
+        NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentIntent(contentIntent(context))
+            .setGroup(GROUP)
+            .setGroupSummary(true)
+            .setOngoing(true)
+            .setSilent(true)
+            .build()
 
     /**
      * Placeholder used only when the service is promoted with nothing to show, so the
