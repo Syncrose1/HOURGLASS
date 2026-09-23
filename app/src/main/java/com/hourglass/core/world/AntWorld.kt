@@ -65,7 +65,7 @@ class AntWorld(
     private var evaporateCounter = 0
     private var pendingHatches = 0
 
-    private class Ant(var x: Int, var y: Int, var dir: Int, val pace: Float) {
+    private class Ant(var x: Int, var y: Int, var dir: Int, val pace: Float, val soul: Int) {
         var carrying = false
         var banked = 0f
         /** Steps since leaving a source or the nest: scent laid weakens with distance. */
@@ -92,6 +92,13 @@ class AntWorld(
     /** Whether any ant is standing somewhere it could not have walked. */
     fun anyAntInsideObstacle(): Boolean = ants.any { AntMat.blocks(ground[it.y * width + it.x]) }
     val storedLoads: Int get() = delivered
+
+    /** Souls in hatching order: the first ten all different, then round again at random. */
+    private val casting = Souls.cast(MAX_ANTS, generator)
+
+    override val deeds: Deeds = Deeds("Ant")
+
+    override val shift: List<Int> get() = ants.map { it.soul }.distinct()
 
     init {
         paintGround()
@@ -176,7 +183,8 @@ class AntWorld(
     }
 
     private fun hatch() {
-        val ant = Ant(nestX, nestY, generator.nextInt(8), 0.7f + generator.nextFloat() * 0.55f)
+        val soul = casting[ants.size % casting.size]
+        val ant = Ant(nestX, nestY, generator.nextInt(8), Souls.pace(soul, generator), soul)
         ant.patience = searchPatience()
         ants += ant
     }
@@ -234,7 +242,10 @@ class AntWorld(
 
         if (ant.carrying || ant.homing) {
             if (ant.atNest()) {
-                if (ant.carrying) deliver(random)
+                if (ant.carrying) {
+                    deliver(random)
+                    deeds.credit(ant.soul, "crumbs carried home")
+                }
                 ant.carrying = false
                 ant.homing = false
                 ant.travelled = 0
@@ -262,6 +273,8 @@ class AntWorld(
             if (nx !in 0 until width || ny !in 0 until height) continue
             val index = ny * width + nx
             if (food[index] > 0) {
+                // Food with no trail anywhere near it yet: this ant found it.
+                if (!scentNear(nx, ny)) deeds.credit(ant.soul, "food finds")
                 food[index]--
                 ant.carrying = true
                 ant.travelled = 0
@@ -276,6 +289,15 @@ class AntWorld(
             return
         }
         move(ant, random, homeward = false)
+    }
+
+    private fun scentNear(x: Int, y: Int): Boolean {
+        for (dy in -FIND_RADIUS..FIND_RADIUS) for (dx in -FIND_RADIUS..FIND_RADIUS) {
+            val nx = x + dx
+            val ny = y + dy
+            if (nx in 0 until width && ny in 0 until height && toFood[ny * width + nx] > FIND_SCENT) return true
+        }
+        return false
     }
 
     private fun deliver(random: Random) {
@@ -385,6 +407,8 @@ class AntWorld(
         private const val LOADS_PER_MINUTE = 15f
 
         private const val RATE = 0.15f
+        private const val FIND_SCENT = 0.05f
+        private const val FIND_RADIUS = 3
         private const val MAX_ACTIONS_PER_TICK = 6
         private const val SLACK_PACE = 0.5f
         private const val REST_MIN_TICKS = 40

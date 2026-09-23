@@ -142,7 +142,7 @@ class ForestWorld(
 
     private enum class Task { NONE, FELL, LIMB, BUCK, HAUL, BURN }
 
-    private inner class Jack(var x: Int, val pace: Float) {
+    private inner class Jack(var x: Int, val pace: Float, val soul: Int) {
         var banked = 0f
         var resting = 0
         var task = Task.NONE
@@ -177,6 +177,10 @@ class ForestWorld(
 
     override val focusY: Float get() = 0.85f
 
+    override val deeds: Deeds = Deeds("Lumberjack")
+
+    override val shift: List<Int> get() = jacks.map { it.soul }.distinct()
+
     val treesDown: Int get() = trees.count { it.stage == Stage.DOWN || it.stage == Stage.DONE }
     val lengthsStacked: Int get() = stacked
     val crewSize: Int get() = jacks.size
@@ -193,7 +197,9 @@ class ForestWorld(
         paintGround()
         plantTrees()
         layOutPile()
-        repeat(CREW) { jacks += Jack(generator.nextInt(1, CAMP_EDGE), 0.75f + generator.nextFloat() * 0.45f) }
+        Souls.cast(CREW, generator).forEach { soul ->
+            jacks += Jack(generator.nextInt(1, CAMP_EDGE), Souls.pace(soul, generator), soul)
+        }
     }
 
     private fun paintGround() {
@@ -562,7 +568,10 @@ class ForestWorld(
         if (tree.chop >= FELL_WORK) {
             tree.stage = Stage.WARNING
             tree.warnTicks = 0
-            jacks.filter { it.tree === tree && it.task == Task.FELL }.forEach { done(it) }
+            jacks.filter { it.tree === tree && it.task == Task.FELL }.forEach {
+                deeds.credit(it.soul, "trees felled")
+                done(it)
+            }
         }
     }
 
@@ -605,6 +614,7 @@ class ForestWorld(
             if (cleared >= LIMB_PER_STROKE) break@loop
         }
         tree.brush += cleared
+        deeds.credit(jack.soul, "branches cleared", cleared)
         if (random.nextFloat() < 0.3f) {
             particles += Particle(
                 jack.x.toFloat(), footY - 3f, (random.nextFloat() - 0.5f) * 0.4f, -0.25f, 25,
@@ -644,6 +654,7 @@ class ForestWorld(
                 felledOwner[index] = -1
             }
             tree.cutDone[cut] = true
+            deeds.credit(jack.soul, "cuts sawn")
             done(jack)
         }
     }
@@ -695,6 +706,7 @@ class ForestWorld(
         carry.tree.sectionState[carry.section] = 2
         carries.remove(carry)
         carry.bearers.forEach {
+            deeds.credit(it.soul, "lengths carried")
             done(it)
             if (random.nextFloat() < REST_AFTER_CARRY) it.resting = random.nextInt(REST_MIN_TICKS, REST_MAX_TICKS)
         }
@@ -737,6 +749,7 @@ class ForestWorld(
         tree.lighting++
         if (tree.lighting >= LIGHT_WORK) {
             tree.brushLit = true
+            deeds.credit(jack.soul, "brush fires lit")
             done(jack)
         }
     }

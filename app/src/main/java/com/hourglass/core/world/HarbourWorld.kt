@@ -113,10 +113,13 @@ class HarbourWorld(
     private var targetY = 0
     private var craneBank = 0f
 
+    /** Who is in the crane's cab. */
+    private var craneDriver = -1
+
     /** Loads set down on the quay, waiting for dockers; index = slot. */
     private val pile = ArrayList<Int>()
 
-    private inner class Docker(var x: Int, val pace: Float) {
+    private inner class Docker(var x: Int, val pace: Float, val soul: Int) {
         var banked = 0f
         var load = -1
         var slot = -1
@@ -155,6 +158,10 @@ class HarbourWorld(
 
     override val focusY: Float get() = 0.8f
 
+    override val deeds: Deeds = Deeds("Docker")
+
+    override val shift: List<Int> get() = (listOf(craneDriver) + dockers.map { it.soul }).distinct()
+
     val loadsStored: Int get() = stored
     val loadsLost: Int get() = lost
     var shipsServed: Int = 0
@@ -162,7 +169,10 @@ class HarbourWorld(
 
     init {
         paintStatic()
-        repeat(DOCKERS) { dockers += Docker(pileLeft + 4 + it * 2, 0.75f + generator.nextFloat() * 0.45f) }
+        val souls = Souls.cast(DOCKERS + 1, generator)
+        craneDriver = souls[0]
+        craneBank = 0f
+        for (i in 1..DOCKERS) dockers += Docker(pileLeft + 2 + i * 2, Souls.pace(souls[i], generator), souls[i])
         repeat(3) {
             gulls += Gull(generator.nextFloat() * width, generator.nextFloat() * (quayTop - 30) + 6, 0.15f, -1)
         }
@@ -315,7 +325,7 @@ class HarbourWorld(
      * up. It will not bring a load in if there is nowhere on the quay to set it.
      */
     private fun stepCrane(effort: Float, random: Random) {
-        craneBank += effort.coerceAtLeast(SLACK_PACE) * CRANE_RATE
+        craneBank += effort.coerceAtLeast(SLACK_PACE) * CRANE_RATE * Souls.temperament(craneDriver).pace
         // Below a working pace, the crane stands idle between lifts rather than crawling.
         if (effort < SLACK_PACE && hookState == HookState.IDLE && random.nextFloat() < (SLACK_PACE / effort.coerceAtLeast(0.01f) - 1f) / 60f) {
             craneBank = 0f
@@ -360,7 +370,10 @@ class HarbourWorld(
             }
             HookState.TO_DROP -> {
                 // Over open water, a load can slip the hook.
-                if (hookX() < quayEdge && random.nextFloat() < SLIP_CHANCE) {
+                // A careless driver loses more of them.
+                val care = Souls.temperament(craneDriver).care
+                if (hookX() < quayEdge && random.nextFloat() < SLIP_CHANCE * (1.6f - care * 1.2f)) {
+                    deeds.credit(craneDriver, "loads dropped in the harbour", trade = "Crane driver")
                     sinking += Sinking(hookX().toInt(), hookY + 1f, hookLoad)
                     hookLoad = -1
                     lost++
@@ -373,6 +386,7 @@ class HarbourWorld(
                 val (x, y) = pileSlotPosition(pile.size)
                 if (moveHook(x.toFloat(), (y - 1).toFloat())) {
                     pile += hookLoad
+                    deeds.credit(craneDriver, "loads craned ashore", trade = "Crane driver")
                     hookLoad = -1
                     hookState = HookState.RAISE
                 }
@@ -452,6 +466,7 @@ class HarbourWorld(
         }
         shelves += docker.load
         stored++
+        deeds.credit(docker.soul, "loads warehoused")
         docker.load = -1
         if (random.nextFloat() < REST_AFTER_LOAD) docker.resting = random.nextInt(REST_MIN_TICKS, REST_MAX_TICKS)
     }

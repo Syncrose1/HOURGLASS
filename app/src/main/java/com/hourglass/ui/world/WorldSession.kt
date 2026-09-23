@@ -1,6 +1,7 @@
 package com.hourglass.ui.world
 
 import com.hourglass.core.TimerRef
+import com.hourglass.data.souls.SoulLedger
 import com.hourglass.core.world.AntWorld
 import com.hourglass.core.world.BattleWorld
 import com.hourglass.core.world.ForestWorld
@@ -20,7 +21,11 @@ import kotlin.random.Random
  * Owned by [WorldRegistry] rather than by a composable, so the tile on the wall and
  * the focus view are two windows onto the same world instead of two worlds.
  */
-class WorldSession(val world: World) {
+class WorldSession(
+    val world: World,
+    /** False for a preview: a demo is not real work, and nobody gets credit for it. */
+    private val credits: Boolean = true
+) {
 
     private val pacer = world.newPacer()
 
@@ -51,11 +56,21 @@ class WorldSession(val world: World) {
         }
         stepped = true
         version++
+        if (version % COLLECT_EVERY == 0) flush()
+    }
+
+    /** Hands what the crew has done over to the ledger. */
+    fun flush() {
+        val deeds = world.deeds?.collect() ?: return
+        if (credits) SoulLedger.credit(deeds)
     }
 
     private companion object {
         const val CATCH_UP_GAP = 0.04f
         const val CATCH_UP_STEPS = 24
+
+        /** About every five seconds on screen. */
+        const val COLLECT_EVERY = 150
     }
 }
 
@@ -95,7 +110,7 @@ object WorldRegistry {
         return session
     }
 
-    private fun create(kind: WorldKind, seed: Long, durationMillis: Long): WorldSession {
+    private fun create(kind: WorldKind, seed: Long, durationMillis: Long, credits: Boolean = true): WorldSession {
         val minutes = durationMillis / 60_000f
         val richness = MineWorld.richnessFor(minutes)
         val world: World = when (kind) {
@@ -108,12 +123,12 @@ object WorldRegistry {
             WorldKind.HARBOUR -> HarbourWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, HarbourWorld.quotaFor(minutes))
             WorldKind.SIEGE -> SiegeWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, SiegeWorld.quotaFor(minutes))
         }
-        return WorldSession(world)
+        return WorldSession(world, credits)
     }
 
     /** A fresh world for a preview, sized for a short demo timer and never registered. */
     fun sample(kind: WorldKind): WorldSession =
-        create(kind, System.nanoTime(), durationMillis = SAMPLE_DURATION_MILLIS)
+        create(kind, System.nanoTime(), durationMillis = SAMPLE_DURATION_MILLIS, credits = false)
 
     private const val SAMPLE_DURATION_MILLIS = 10 * 60_000L
 

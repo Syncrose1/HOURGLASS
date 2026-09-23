@@ -3,6 +3,7 @@ package com.hourglass
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.hourglass.data.souls.SoulLedger
 import com.hourglass.service.DayRemainingNotifier
 import com.hourglass.service.NotificationHelper
 import com.hourglass.work.DayRemainingWorker
@@ -28,5 +29,6 @@ class HourglassApp : Application(), Configuration.Provider {
         NotificationHelper.createChannel(this)
         dayNotifier.createChannel()
         DayRemainingWorker.schedule(this)
+        SoulLedger.init(this)
     }
 }

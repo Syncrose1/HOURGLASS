@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Terrain
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +79,7 @@ fun HomeScreen(
     onEditTimer: (TimerRef) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDesert: () -> Unit,
+    onOpenSouls: () -> Unit,
     viewModel: HourglassViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -109,7 +111,8 @@ fun HomeScreen(
             onEditTimer = onEditTimer,
             onAddTimer = onAddTimer,
             onOpenSettings = onOpenSettings,
-            onOpenDesert = onOpenDesert
+            onOpenDesert = onOpenDesert,
+            onOpenSouls = onOpenSouls
         )
 
         AnimatedVisibility(visible = focused != null, enter = fadeIn(), exit = fadeOut()) {
@@ -139,7 +142,8 @@ private fun Wall(
     onEditTimer: (TimerRef) -> Unit,
     onAddTimer: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenDesert: () -> Unit
+    onOpenDesert: () -> Unit,
+    onOpenSouls: () -> Unit
 ) {
     val timers = home.sandTimers + home.quicksand
 
@@ -178,6 +182,12 @@ private fun Wall(
                 icon = Icons.Rounded.Terrain,
                 label = stringResource(R.string.desert),
                 onClick = onOpenDesert,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            ActionTile(
+                icon = Icons.Rounded.Groups,
+                label = stringResource(R.string.souls),
+                onClick = onOpenSouls,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
             ActionTile(

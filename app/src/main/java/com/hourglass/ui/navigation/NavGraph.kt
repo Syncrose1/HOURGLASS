@@ -24,6 +24,7 @@ import com.hourglass.viewmodel.HourglassViewModel
 import com.hourglass.ui.screens.DesertScreen
 import com.hourglass.ui.screens.HomeScreen
 import com.hourglass.ui.screens.SettingsScreen
+import com.hourglass.ui.screens.SoulsScreen
 import com.hourglass.ui.screens.TimerFormScreen
 
 /**
@@ -38,6 +39,7 @@ object Routes {
     const val NEW_TIMER = "timer/new"
     const val SETTINGS = "settings"
     const val DESERT = "desert"
+    const val SOULS = "souls"
 
     const val ARG_ID = "id"
     const val ARG_KIND = "kind"
@@ -85,7 +87,8 @@ private fun Destinations(navController: NavHostController) {
                 onAddTimer = { navController.navigate(Routes.NEW_TIMER) },
                 onEditTimer = { ref -> navController.navigate(Routes.editTimer(ref)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                onOpenDesert = { navController.navigate(Routes.DESERT) }
+                onOpenDesert = { navController.navigate(Routes.DESERT) },
+                onOpenSouls = { navController.navigate(Routes.SOULS) }
             )
         }
 
@@ -117,6 +120,10 @@ private fun Destinations(navController: NavHostController) {
 
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SOULS) {
+            SoulsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.DESERT) {

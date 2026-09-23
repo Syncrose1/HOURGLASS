@@ -68,6 +68,8 @@ class SiegeWorld(
     private val plan = BooleanArray(width * height)
     private val built = BooleanArray(width * height)
     private val claimed = BooleanArray(width * height)
+    /** Cells that have stood before: setting one again is a repair. */
+    private val everBuilt = BooleanArray(width * height)
     private var planned = 0
     private var standing = 0
 
@@ -84,7 +86,7 @@ class SiegeWorld(
 
     private enum class Job { NONE, FETCH, CARRY, CLIMB, DESCEND, QUARRY }
 
-    private inner class Worker(var x: Int, val pace: Float, val quarryman: Boolean) {
+    private inner class Worker(var x: Int, val pace: Float, val quarryman: Boolean, val soul: Int) {
         var y = footY
         var banked = 0f
         var job = Job.NONE
@@ -132,14 +134,22 @@ class SiegeWorld(
 
     override val focusY: Float get() = 0.8f
 
+    override val deeds: Deeds = Deeds("Mason")
+
+    override val shift: List<Int> get() = workers.map { it.soul }.distinct()
+
     val blocksStanding: Int get() = standing
 
     init {
         paintGround()
         drawPlan()
         cutQuarry()
-        repeat(MASONS) { workers += Worker(QUARRY_LEFT - 3 - it, 0.75f + generator.nextFloat() * 0.45f, quarryman = false) }
-        repeat(QUARRYMEN) { workers += Worker(QUARRY_LEFT - 1, 0.8f + generator.nextFloat() * 0.4f, quarryman = true) }
+        val souls = Souls.cast(MASONS + QUARRYMEN, generator)
+        repeat(MASONS) { workers += Worker(QUARRY_LEFT - 3 - it, Souls.pace(souls[it], generator), quarryman = false, soul = souls[it]) }
+        repeat(QUARRYMEN) {
+            val soul = souls[MASONS + it]
+            workers += Worker(QUARRY_LEFT - 1, Souls.pace(soul, generator), quarryman = true, soul = soul)
+        }
         stockpile = 6
         waitTicks = generator.nextInt(200, 600)
     }
@@ -269,6 +279,7 @@ class SiegeWorld(
         if (quarryWork >= QUARRY_WORK) {
             quarryWork = 0f
             stockpile++
+            deeds.credit(worker.soul, "blocks quarried", trade = "Quarryman")
             quarriedFromCell++
             if (quarriedFromCell >= BLOCKS_PER_ROCK) {
                 quarriedFromCell = 0
@@ -349,6 +360,8 @@ class SiegeWorld(
                 if (plan[index] && !built[index] && supported(worker.targetX, worker.targetY)) {
                     built[index] = true
                     standing++
+                    deeds.credit(worker.soul, if (everBuilt[index]) "holes patched" else "blocks laid")
+                    everBuilt[index] = true
                     worker.swing = !worker.swing
                 } else {
                     // Someone beat us to it, or the course below was shot away: take

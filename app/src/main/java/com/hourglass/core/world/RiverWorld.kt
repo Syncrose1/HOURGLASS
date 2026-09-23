@@ -98,6 +98,10 @@ class RiverWorld(
 
     override val focusY: Float get() = 0.55f
 
+    override val deeds: Deeds? get() = crew.deeds
+
+    override val shift: List<Int> get() = crew.workers.map { it.soul }.distinct()
+
     val waterCount: Int get() = cells.count { it == RiverMat.WATER }
     val beaverCount: Int get() = crew.workers.size
     val jamTotal: Int get() = woodTotal
@@ -154,6 +158,9 @@ class RiverWorld(
         crew = Crew(
             site = this,
             seed = generator.nextLong(),
+            deeds = Deeds("Beaver"),
+            deliveredDeed = "",
+            brokeDeed = "logs broken",
             spawns = List((width / 20).coerceIn(2, 5)) { index ->
                 val x = (width - 2 - index * 2).coerceIn(damRight + 1, width - 1)
                 x to surface[x] - 1

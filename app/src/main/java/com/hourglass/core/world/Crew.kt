@@ -60,6 +60,10 @@ interface Site {
 class Worker(var x: Int, var y: Int, internal val pace: Float) {
     var carrying: Boolean = false
 
+    /** Which of the ten [Souls] this is. */
+    var soul: Int = -1
+        internal set
+
     /** True while prospecting: heading for somewhere that might turn something up. */
     var exploring: Boolean = false
         internal set
@@ -89,13 +93,19 @@ class Crew(
     private val site: Site,
     spawns: List<Pair<Int, Int>>,
     seed: Long = 0L,
-    private val rate: Float = DEFAULT_RATE
+    private val rate: Float = DEFAULT_RATE,
+    /** Where the crew's work is credited, and what to call it; an empty name goes uncounted. */
+    val deeds: Deeds? = null,
+    private val deliveredDeed: String = "loads delivered",
+    private val brokeDeed: String = "cells broken"
 ) {
     private val temperament = Random(seed)
 
-    /** Each worker keeps their own pace, so a crew never moves in lockstep. */
-    val workers: List<Worker> = spawns.map { (x, y) ->
-        Worker(x, y, pace = MIN_PACE + temperament.nextFloat() * (MAX_PACE - MIN_PACE))
+    private val souls = Souls.cast(spawns.size, temperament)
+
+    /** Each worker is one of the ten souls, and goes at that soul's pace. */
+    val workers: List<Worker> = spawns.mapIndexed { i, (x, y) ->
+        Worker(x, y, pace = Souls.pace(souls[i], temperament)).also { it.soul = souls[i] }
     }
 
     private val width = site.width
@@ -160,6 +170,7 @@ class Crew(
             worker.carrying = false
             endPath(worker)
             site.unload(random)
+            if (deliveredDeed.isNotEmpty()) deeds?.credit(worker.soul, deliveredDeed)
             // A load home is a good moment to stop for a breather.
             if (random.nextFloat() < REST_AFTER_DELIVERY) rest(worker, random)
             return
@@ -223,6 +234,7 @@ class Crew(
             site.breakCost(next, worker.carrying) >= 0 -> {
                 val quarry = site.isQuarry(next)
                 if (site.work(next, random)) {
+                    deeds?.credit(worker.soul, brokeDeed)
                     if (quarry && !worker.carrying) worker.carrying = true
                     endPath(worker)
                     reveal(worker)
@@ -391,10 +403,6 @@ class Crew(
          * Fast enough to follow, slow enough to watch.
          */
         const val DEFAULT_RATE = 0.2f
-
-        /** Spread of individual pace across a crew. */
-        private const val MIN_PACE = 0.7f
-        private const val MAX_PACE = 1.25f
 
         /** How far a worker can see into unexplored ground. */
         private const val SENSE_RADIUS = 4

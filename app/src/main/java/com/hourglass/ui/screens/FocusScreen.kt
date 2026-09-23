@@ -32,6 +32,7 @@ import com.hourglass.R
 import com.hourglass.core.TimeFormat
 import com.hourglass.ui.components.lerp
 import com.hourglass.ui.world.WorldRegistry
+import com.hourglass.core.world.Souls
 import com.hourglass.ui.world.WorldView
 import com.hourglass.ui.theme.HourglassTheme
 import com.hourglass.ui.theme.Spacing
@@ -130,6 +131,16 @@ fun FocusScreen(
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.textMuted
             )
+            val shift = session.world.shift
+            if (shift.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.on_shift, shift.sorted().joinToString { Souls.name(it) }),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             Spacer(Modifier.height(Spacing.lg))
 

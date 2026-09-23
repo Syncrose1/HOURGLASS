@@ -85,7 +85,7 @@ class BattleWorld(
         var capture = 0f
     }
 
-    private class Soldier(var x: Float, var y: Float, val side: Int, var squad: Int) {
+    private class Soldier(var x: Float, var y: Float, val side: Int, var squad: Int, val soul: Int = -1) {
         var routed = false
         var cooldown = 0
         var regroup = 0
@@ -155,6 +155,10 @@ class BattleWorld(
     override val kind: WorldKind get() = WorldKind.BATTLE
 
     override val focusY: Float get() = 0.5f
+
+    override val deeds: Deeds = Deeds("Soldier")
+
+    override val shift: List<Int> get() = units.filter { it.soul >= 0 }.map { it.soul }.distinct()
 
     override fun newPacer(): WorldPacer = WorldPacer(gain = PACER_GAIN, learningRate = PACER_LEARNING)
 
@@ -292,6 +296,8 @@ class BattleWorld(
     }
 
     private fun raiseArmies() {
+        val souls = Souls.cast(SQUADS * SQUAD_SIZE, generator)
+        var enlisted = 0
         for (side in 0..1) {
             repeat(SQUADS) { s ->
                 val squad = Squad(side)
@@ -300,7 +306,9 @@ class BattleWorld(
                 repeat(SQUAD_SIZE) {
                     val x = width / 2f + generator.nextFloat() * 20f - 10f
                     val y = baseY[side] + (if (side == ours) -2f else 2f) + generator.nextFloat() * 2f
-                    units += Soldier(x, y, side, squads.size - 1)
+                    // Our side is the ten souls, over and over; theirs are strangers.
+                    val soul = if (side == ours) souls[enlisted++] else -1
+                    units += Soldier(x, y, side, squads.size - 1, soul)
                 }
             }
         }
@@ -570,7 +578,13 @@ class BattleWorld(
         chance *= OVERREACH_MIN + (OVERREACH_MAX - OVERREACH_MIN) * depth
         if (BattleMat.isForest(cells[cellOf(target)])) chance *= 0.45f
         if (BattleMat.isHill(cells[cellOf(unit)])) chance *= 1.3f
-        if (random.nextFloat() < chance) rout(target, random)
+        // A careful shot hits more often.
+        if (unit.soul >= 0) chance *= 0.7f + 0.6f * Souls.temperament(unit.soul).care
+        if (random.nextFloat() < chance) {
+            rout(target, random)
+            deeds.credit(unit.soul, "foes routed")
+            deeds.credit(target.soul, "times routed")
+        }
     }
 
     private fun rout(unit: Soldier, random: Random) {

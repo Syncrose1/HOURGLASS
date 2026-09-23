@@ -62,6 +62,15 @@ interface World {
     /** Which kind of world this is; decides how the UI colours its cells. */
     val kind: WorldKind
 
+    /**
+     * Who did what, for the ten [Souls]. Null for a world with nobody in it — a
+     * volcano builds its island on its own.
+     */
+    val deeds: Deeds? get() = null
+
+    /** The souls on shift here, each once. */
+    val shift: List<Int> get() = emptyList()
+
     /** Copies the world into [buffer] with its inhabitants drawn in. */
     fun renderInto(buffer: IntArray)
 

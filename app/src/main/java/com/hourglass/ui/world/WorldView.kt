@@ -61,7 +61,11 @@ fun WorldView(
     val skyBottom = Color(DaySky.bottomAt(spent))
 
     LaunchedEffect(session, running) {
-        if (!running) return@LaunchedEffect
+        if (!running) {
+            // Paused or finished: whatever the crew did since the last hand-over counts.
+            session.flush()
+            return@LaunchedEffect
+        }
         var last = 0L
         while (true) {
             withFrameMillis { now ->

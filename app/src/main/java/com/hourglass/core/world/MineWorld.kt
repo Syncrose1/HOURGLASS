@@ -111,6 +111,10 @@ class MineWorld(
 
     override val focusY: Float get() = 0.08f
 
+    override val deeds: Deeds? get() = crew.deeds
+
+    override val shift: List<Int> get() = crew.workers.map { it.soul }.distinct()
+
     val minerCount: Int get() = crew.workers.size
     val totalSeams: Int get() = mineralsTotal
 
@@ -277,6 +281,9 @@ class MineWorld(
         crew = Crew(
             site = this,
             seed = generator.nextLong(),
+            deeds = Deeds("Miner"),
+            deliveredDeed = "minerals mined",
+            brokeDeed = "cells dug",
             spawns = List(count) { index ->
                 val x = (cartX - 2 + index * 2 - count / 2).coerceIn(1, width - 2)
                 x to (surface[x] - 1).coerceAtLeast(0)
