@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -67,6 +69,19 @@ class DayRemainingWorker @AssistedInject constructor(
 
     companion object {
         private const val NAME = "day_remaining"
+
+        /**
+         * Brings the notification up to date now, rather than at the next quarter hour:
+         * an install, an update or a reboot clears it, and waiting up to fifteen minutes
+         * for it to come back leaves the day unannounced.
+         */
+        fun refreshNow(context: Context) {
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "$NAME-now",
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<DayRemainingWorker>().build()
+            )
+        }
 
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<DayRemainingWorker>(

@@ -29,6 +29,7 @@ class HourglassApp : Application(), Configuration.Provider {
         NotificationHelper.createChannel(this)
         dayNotifier.createChannel()
         DayRemainingWorker.schedule(this)
+        DayRemainingWorker.refreshNow(this)
         SoulLedger.init(this)
     }
 }
