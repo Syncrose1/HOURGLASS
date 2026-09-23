@@ -6,6 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +18,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hourglass.core.TimerKind
 import com.hourglass.core.TimerRef
+import com.hourglass.core.world.DaySky
+import com.hourglass.ui.world.LocalDaySpent
+import com.hourglass.viewmodel.HourglassViewModel
 import com.hourglass.ui.screens.DesertScreen
 import com.hourglass.ui.screens.HomeScreen
 import com.hourglass.ui.screens.SettingsScreen
@@ -53,7 +60,18 @@ object Routes {
 }
 
 @Composable
-fun NavGraph(navController: NavHostController = rememberNavController()) {
+fun NavGraph(
+    navController: NavHostController = rememberNavController(),
+    viewModel: HourglassViewModel = hiltViewModel()
+) {
+    val home by viewModel.homeState.collectAsStateWithLifecycle()
+    CompositionLocalProvider(LocalDaySpent provides DaySky.spentFor(home.minutesUntilBedtime)) {
+        Destinations(navController)
+    }
+}
+
+@Composable
+private fun Destinations(navController: NavHostController) {
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,

@@ -56,7 +56,7 @@ fun BedtimeBar(
     modifier: Modifier = Modifier
 ) {
     val rounded = Bedtime.roundForDisplay(minutesUntil)
-    val spent = (1f - minutesUntil / WAKING_MINUTES).coerceIn(0f, 1f)
+    val spent = DaySky.spentFor(minutesUntil)
 
     BoxWithConstraints(
         modifier = modifier
@@ -136,6 +136,3 @@ private val CELL = 4.dp
 private val INK_DAY = Color(0xFF2B2230)
 
 private const val TWINKLE_MILLIS = 120L
-
-/** A nominal waking day, used only to place the sun. */
-private const val WAKING_MINUTES = 16f * 60f

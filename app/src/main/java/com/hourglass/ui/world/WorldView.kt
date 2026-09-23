@@ -19,9 +19,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.hourglass.core.world.DaySky
 import com.hourglass.core.world.Palettes
-import com.hourglass.ui.components.lerp
-import com.hourglass.ui.theme.HourglassTheme
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -42,7 +41,6 @@ fun WorldView(
     timerProgress: Float,
     modifier: Modifier = Modifier
 ) {
-    val colors = HourglassTheme.colors
     val world = session.world
     val progress by rememberUpdatedState(timerProgress)
 
@@ -57,8 +55,10 @@ fun WorldView(
     val palette = remember(mineral, world.kind) { Palettes.forKind(world.kind, mineral.toArgb()) }
     val shaded = remember(palette, world) { Palettes.shadedByDepth(palette, world.height) }
 
-    val skyTop = lerp(colors.duskTop, colors.backdropTop, if (colors.isDark) 0.15f else 0.55f)
-    val skyBottom = lerp(colors.accentSoft, colors.backdropTop, if (colors.isDark) 0.1f else 0.35f)
+    // The same sky as the bar at the top of the wall, at the same hour.
+    val spent = LocalDaySpent.current
+    val skyTop = Color(DaySky.topAt(spent))
+    val skyBottom = Color(DaySky.bottomAt(spent))
 
     LaunchedEffect(session, running) {
         if (!running) return@LaunchedEffect

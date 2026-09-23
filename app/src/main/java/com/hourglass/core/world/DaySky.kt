@@ -38,8 +38,8 @@ class DaySky(val width: Int, val height: Int, seed: Long = 7L) {
      */
     fun render(buffer: IntArray, spent: Float, tick: Int) {
         val t = spent.coerceIn(0f, 1f)
-        val top = keyed(t, TOPS)
-        val bottom = keyed(t, BOTTOMS)
+        val top = topAt(t)
+        val bottom = bottomAt(t)
         for (y in 0 until height) {
             val row = Palettes.mix(top, bottom, y.toFloat() / horizon)
             // Banded, not smooth: a few steps of colour, the way a pixel sky is painted.
@@ -80,13 +80,27 @@ class DaySky(val width: Int, val height: Int, seed: Long = 7L) {
         }
     }
 
-    private fun keyed(t: Float, keys: IntArray): Int {
-        val position = t * (keys.size - 1)
-        val index = position.toInt().coerceAtMost(keys.size - 2)
-        return Palettes.mix(keys[index], keys[index + 1], position - index)
-    }
-
     companion object {
+        /**
+         * How much of the waking day is gone with [minutesUntilBedtime] left, `0f..1f`.
+         * The same figure lights the bar and every world's sky, so they always agree.
+         */
+        fun spentFor(minutesUntilBedtime: Int): Float =
+            (1f - minutesUntilBedtime / WAKING_MINUTES).coerceIn(0f, 1f)
+
+        /** The sky's colour at its top and at the horizon, ARGB, for a day [spent]. */
+        fun topAt(spent: Float): Int = keyed(spent.coerceIn(0f, 1f), TOPS)
+        fun bottomAt(spent: Float): Int = keyed(spent.coerceIn(0f, 1f), BOTTOMS)
+
+        private fun keyed(t: Float, keys: IntArray): Int {
+            val position = t * (keys.size - 1)
+            val index = position.toInt().coerceAtMost(keys.size - 2)
+            return Palettes.mix(keys[index], keys[index + 1], position - index)
+        }
+
+        /** A nominal waking day, ending at bedtime. */
+        private const val WAKING_MINUTES = 16f * 60f
+
         private const val DUNE_ROWS = 4
         private const val BANDS = 5
         private const val SUN_RADIUS = 2
