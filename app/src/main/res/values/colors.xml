@@ -3,5 +3,8 @@
     <!-- Mirrors HourglassColors.backdropTop so the launch window matches the first frame. -->
     <color name="window_background">#FCF8F1</color>
     <color name="icon_background">#241D16</color>
-    <color name="icon_sand">#E0A63C</color>
+    <color name="icon_sand">#D2A865</color>
+    <color name="icon_sand_lit">#EBCD92</color>
+    <color name="icon_sand_shade">#AD8248</color>
+    <color name="icon_sand_dark">#8E6838</color>
 </resources>

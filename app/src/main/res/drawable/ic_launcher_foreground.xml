@@ -1,37 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive icon foreground. All artwork sits inside the centre 72x72 of the 108x108
-  viewport so no part of it is cropped by a launcher's mask.
+  A pile of sand, fallen from a glass: a lopsided heap in the same chunky pixels as
+  the worlds, lit from the left, with the last grains still coming down. All artwork
+  sits inside the centre 72x72 of the 108x108 viewport, clear of any launcher mask.
+  Generated from a column-height profile; edit the profile, not the paths.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
-    <!-- Upper and lower frame caps -->
     <path
         android:fillColor="@color/icon_sand"
-        android:pathData="M33,24h42a3,3 0 0 1 0,6h-42a3,3 0 0 1 0,-6z" />
+        android:pathData="M26,78h4v4h-4zM34,78h4v4h-4zM34,74h4v4h-4zM38,78h4v4h-4zM42,78h4v4h-4zM42,74h4v4h-4zM42,70h4v4h-4zM46,78h4v4h-4zM46,74h4v4h-4zM46,66h4v4h-4zM50,78h4v4h-4zM50,74h4v4h-4zM50,70h4v4h-4zM50,66h4v4h-4zM50,62h4v4h-4zM54,78h4v4h-4zM54,74h4v4h-4zM54,70h4v4h-4zM54,66h4v4h-4zM54,58h4v4h-4zM58,78h4v4h-4zM58,74h4v4h-4zM58,70h4v4h-4zM58,66h4v4h-4zM58,62h4v4h-4zM58,58h4v4h-4zM62,78h4v4h-4zM62,74h4v4h-4zM62,70h4v4h-4zM62,66h4v4h-4zM62,62h4v4h-4zM62,58h4v4h-4zM62,54h4v4h-4zM62,50h4v4h-4z" />
     <path
-        android:fillColor="@color/icon_sand"
-        android:pathData="M33,78h42a3,3 0 0 1 0,6h-42a3,3 0 0 1 0,-6z" />
-
-    <!-- Glass: upper chamber drained, lower chamber heaped -->
+        android:fillColor="@color/icon_sand_lit"
+        android:pathData="M18,78h4v4h-4zM22,78h4v4h-4zM26,74h4v4h-4zM30,74h4v4h-4zM34,70h4v4h-4zM38,70h4v4h-4zM42,66h4v4h-4zM46,62h4v4h-4zM50,58h4v4h-4zM54,54h4v4h-4zM58,50h4v4h-4zM62,46h4v4h-4zM62,34h4v4h-4zM62,26h4v4h-4zM58,18h4v4h-4z" />
     <path
-        android:fillColor="@color/icon_sand"
-        android:fillAlpha="0.45"
-        android:pathData="M38,30L70,30L57,54L70,78L38,78L51,54Z" />
-
-    <!-- Sand: the stream and the mound -->
+        android:fillColor="@color/icon_sand_shade"
+        android:pathData="M66,78h4v4h-4zM66,70h4v4h-4zM66,66h4v4h-4zM66,62h4v4h-4zM66,58h4v4h-4zM66,54h4v4h-4zM66,50h4v4h-4zM70,78h4v4h-4zM70,74h4v4h-4zM70,70h4v4h-4zM70,66h4v4h-4zM70,62h4v4h-4zM70,58h4v4h-4zM74,78h4v4h-4zM74,74h4v4h-4zM74,66h4v4h-4zM74,62h4v4h-4zM78,78h4v4h-4zM78,74h4v4h-4zM78,70h4v4h-4zM82,78h4v4h-4zM82,74h4v4h-4zM86,78h4v4h-4z" />
     <path
-        android:fillColor="@color/icon_sand"
-        android:pathData="M52.6,52h2.8v14h-2.8z" />
-    <path
-        android:fillColor="@color/icon_sand"
-        android:pathData="M38,78L70,78L62,66Q54,60 46,66Z" />
-    <path
-        android:fillColor="@color/icon_sand"
-        android:fillAlpha="0.8"
-        android:pathData="M38,30L70,30L64,41L44,41Z" />
+        android:fillColor="@color/icon_sand_dark"
+        android:pathData="M30,78h4v4h-4zM38,74h4v4h-4zM46,70h4v4h-4zM54,62h4v4h-4zM58,54h4v4h-4zM66,74h4v4h-4zM74,70h4v4h-4z" />
 </vector>
