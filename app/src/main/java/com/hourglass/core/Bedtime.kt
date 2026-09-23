@@ -22,6 +22,22 @@ object Bedtime {
         return if (diff > 0) diff else diff + MINUTES_PER_DAY
     }
 
+    /**
+     * When the current day began: the most recent bedtime at or before [nowMillis].
+     * The app's day runs bedtime to bedtime, not midnight to midnight — at half past
+     * midnight with an 11pm bedtime, today began an hour and a half ago.
+     * [offsetMillis] is the local zone's offset from UTC at [nowMillis].
+     */
+    fun lastBoundary(nowMillis: Long, bedtime: TimeOfDay, offsetMillis: Long): Long {
+        val local = nowMillis + offsetMillis
+        val midnight = Math.floorDiv(local, MILLIS_PER_DAY) * MILLIS_PER_DAY
+        var boundary = midnight + bedtime.minuteOfDay * 60_000L - offsetMillis
+        if (boundary > nowMillis) boundary -= MILLIS_PER_DAY
+        return boundary
+    }
+
+    private const val MILLIS_PER_DAY = 24L * 60 * 60 * 1000
+
     /** Length of the planned sleep, wrapping over midnight when wake time is earlier. */
     fun sleepDurationMinutes(bedtime: TimeOfDay, wake: TimeOfDay): Int {
         val diff = wake.minuteOfDay - bedtime.minuteOfDay

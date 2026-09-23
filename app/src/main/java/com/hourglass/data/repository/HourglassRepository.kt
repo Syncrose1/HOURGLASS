@@ -122,6 +122,16 @@ class HourglassRepository @Inject constructor(
         }
     }
 
+    /**
+     * Retires every quicksand timer made before [time], except [keep] — the one that
+     * may still be running. Quicksand is for today; the day ends at bedtime.
+     */
+    suspend fun archiveQuicksandBefore(time: Long, keep: Long?): Int {
+        val stale = quicksandDao.activeCreatedBefore(time).filter { it != keep }
+        stale.forEach { quicksandDao.archive(it) }
+        return stale.size
+    }
+
     suspend fun archive(ref: TimerRef) = when (ref.kind) {
         TimerKind.TASK -> taskDao.archive(ref.id)
         TimerKind.QUICKSAND -> quicksandDao.archive(ref.id)

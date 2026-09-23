@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import java.util.TimeZone
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import com.hourglass.timer.DayReset
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -73,8 +77,21 @@ data class HomeState(
 @HiltViewModel
 class HourglassViewModel @Inject constructor(
     private val repository: HourglassRepository,
-    private val controller: TimerController
+    private val controller: TimerController,
+    private val dayReset: DayReset
 ) : ViewModel() {
+
+    /**
+     * Once a minute, so the day's framing moves on even while nothing else changes —
+     * and so the day ends at bedtime while the app is open, not a quarter hour later.
+     */
+    private val minutes = flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            dayReset.runIfDue()
+            delay(MINUTE_MILLIS)
+        }
+    }
 
     /** Emitted once per timer that reaches its allocation; the UI answers with a haptic. */
     val completions: Flow<ActiveTimer> = controller.completions
@@ -92,16 +109,18 @@ class HourglassViewModel @Inject constructor(
         repository.observeTimers(TimerKind.QUICKSAND),
         controller.state,
         repository.observeRecentSessions(),
-        combine(repository.observeSettings(), _focusedRef) { settings, focused ->
+        combine(repository.observeSettings(), _focusedRef, minutes) { settings, focused, _ ->
             settings to focused
         }
     ) { tasks, quicksand, active, sessions, settingsAndFocus ->
         val (settings, focusedRef) = settingsAndFocus
-        val startOfDay = startOfToday()
         val bedtime = TimeOfDay.parseOr(
             settings[HourglassRepository.KEY_BEDTIME],
             TimeOfDay.DEFAULT_BEDTIME
         )
+        // The app's day runs from bedtime to bedtime.
+        val now = System.currentTimeMillis()
+        val startOfDay = Bedtime.lastBoundary(now, bedtime, TimeZone.getDefault().getOffset(now).toLong())
         val wake = TimeOfDay.parseOr(
             settings[HourglassRepository.KEY_WAKE_TIME],
             TimeOfDay.DEFAULT_WAKE
@@ -213,19 +232,13 @@ class HourglassViewModel @Inject constructor(
 
     private fun durationOf(hours: Int, minutes: Int) = (hours * 3_600L + minutes * 60L) * 1_000L
 
-    private fun startOfToday(): Long = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-
     private fun nowMinuteOfDay(): Int = Calendar.getInstance().let {
         it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE)
     }
 
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
+        const val MINUTE_MILLIS = 60_000L
     }
 }
 

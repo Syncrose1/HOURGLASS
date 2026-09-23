@@ -24,4 +24,7 @@ interface QuicksandDao {
 
     @Query("UPDATE quicksand_tasks SET isActive = 0 WHERE id = :id")
     suspend fun archive(id: Long)
+
+    @Query("SELECT id FROM quicksand_tasks WHERE isActive = 1 AND createdAt < :time")
+    suspend fun activeCreatedBefore(time: Long): List<Long>
 }

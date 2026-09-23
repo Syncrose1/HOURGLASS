@@ -158,6 +158,19 @@ class TimerController @Inject constructor(
         if (current.isRunning) pause() else resume()
     }
 
+    /**
+     * Files a paused session that began before [boundary], so its timer starts the new
+     * day back at zero. A session still running is left alone: someone working past
+     * bedtime keeps their session until they pause or finish it.
+     */
+    suspend fun fileIfPausedBefore(boundary: Long) {
+        mutex.withLock {
+            val current = record ?: return@withLock
+            if (current.isRunning || current.startedAt >= boundary) return@withLock
+            stopLocked(fileSession = true, stopService = true, clearState = true)
+        }
+    }
+
     fun stop() {
         scope.launch {
             mutex.withLock {

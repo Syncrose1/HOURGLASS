@@ -11,6 +11,7 @@ import com.hourglass.core.Bedtime
 import com.hourglass.core.TimeOfDay
 import com.hourglass.data.repository.HourglassRepository
 import com.hourglass.service.DayRemainingNotifier
+import com.hourglass.timer.DayReset
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.Calendar
@@ -28,10 +29,14 @@ class DayRemainingWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val repository: HourglassRepository,
-    private val notifier: DayRemainingNotifier
+    private val notifier: DayRemainingNotifier,
+    private val dayReset: DayReset
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        // The same quarter-hour wake-up ends the day on time, app open or not.
+        dayReset.runIfDue()
+
         val enabled = repository.getSetting(HourglassRepository.KEY_DAY_NOTICE) != "off"
         if (!enabled) {
             notifier.cancel()
