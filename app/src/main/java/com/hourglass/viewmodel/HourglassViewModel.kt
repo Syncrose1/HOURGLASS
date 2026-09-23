@@ -38,7 +38,12 @@ data class TimerCard(
     val isOvertime: Boolean,
     val sessionsCompleted: Int,
     /** When the current session began, or null for a timer that is not in use. */
-    val sessionStartedAt: Long? = null
+    val sessionStartedAt: Long? = null,
+    /**
+     * Today's allocation has been met: today's sessions add up to it, or the clock has
+     * run into overtime. More is still welcome — this only says the day's share is in.
+     */
+    val isDoneToday: Boolean = false
 ) {
     val isIdle: Boolean get() = !isRunning && !isPaused
 
@@ -101,8 +106,19 @@ class HourglassViewModel @Inject constructor(
             settings[HourglassRepository.KEY_WAKE_TIME],
             TimeOfDay.DEFAULT_WAKE
         )
-        val sandCards = tasks.map { it.toCard(active) }
-        val quickCards = quicksand.map { it.toCard(active) }
+        val today = sessions.filter { it.endedAt >= startOfDay }
+        fun done(card: TimerCard): TimerCard {
+            val filed = today.filter {
+                it.taskId == card.ref.id && it.isQuicksand == (card.ref.kind == TimerKind.QUICKSAND)
+            }
+            val live = active?.takeIf { it.ref == card.ref && it.startedAt >= startOfDay }?.elapsedMillis ?: 0L
+            val met = filed.any { it.completed } ||
+                filed.sumOf { it.elapsedMillis } + live >= card.durationMillis ||
+                card.isOvertime
+            return if (met) card.copy(isDoneToday = true) else card
+        }
+        val sandCards = tasks.map { done(it.toCard(active)) }
+        val quickCards = quicksand.map { done(it.toCard(active)) }
         HomeState(
             sandTimers = sandCards,
             quicksand = quickCards,

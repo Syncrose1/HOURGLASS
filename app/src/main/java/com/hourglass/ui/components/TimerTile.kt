@@ -20,6 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -73,6 +77,14 @@ fun TimerTile(
         animationSpec = tween(durationMillis = 480),
         label = "tile_warmth"
     )
+    // Done for the day: the world fades to grey. Tapping still starts it — overtime is
+    // welcome — and while it actually runs it is in colour again.
+    val done = card.isDoneToday && !card.isRunning
+    val greyed by animateFloatAsState(
+        targetValue = if (done) 1f else 0f,
+        animationSpec = tween(durationMillis = 900),
+        label = "tile_greyed"
+    )
 
     TileShell(
         modifier = modifier,
@@ -86,13 +98,14 @@ fun TimerTile(
             append(TimeFormat.compact(card.remainingMillis))
             if (card.isOvertime) append(", ${stringResource(R.string.overtime)}")
             if (card.isPaused) append(", ${stringResource(R.string.paused)}")
+            if (done) append(", ${stringResource(R.string.done_today)}")
         },
         // Each tile carries a wash of its own sand, so the wall reads as a set of
         // different materials rather than a grid of identical grey boxes.
         background = Brush.verticalGradient(
             listOf(
-                lerp(colors.surfaceMuted, sand, 0.10f + 0.14f * warmth),
-                lerp(colors.surfaceMuted, sand, 0.04f + 0.07f * warmth)
+                lerp(colors.surfaceMuted, sand, (0.10f + 0.14f * warmth) * (1f - greyed)),
+                lerp(colors.surfaceMuted, sand, (0.04f + 0.07f * warmth) * (1f - greyed))
             )
         )
     ) {
@@ -111,13 +124,35 @@ fun TimerTile(
                 mineral = sand,
                 running = card.isRunning,
                 timerProgress = card.timerProgress,
+                greyed = greyed,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .clip(MaterialTheme.shapes.small)
             )
 
-            if (detail.showsTime) {
+            if (detail.showsTime && done) {
+                Spacer(Modifier.height(Spacing.xs))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(if (detail == TileDetail.FULL) 18.dp else 14.dp)
+                    )
+                    Spacer(Modifier.width(Spacing.xs))
+                    Text(
+                        text = stringResource(R.string.done_today),
+                        style = if (detail == TileDetail.FULL) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.labelMedium
+                        },
+                        color = colors.textMuted,
+                        maxLines = 1
+                    )
+                }
+            } else if (detail.showsTime) {
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text = TimeFormat.signedClock(card.remainingMillis),

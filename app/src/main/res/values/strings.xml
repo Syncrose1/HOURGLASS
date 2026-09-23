@@ -52,6 +52,7 @@
     <!-- Desert -->
     <string name="desert">Desert</string>
     <string name="souls">Souls</string>
+    <string name="done_today">Done</string>
     <string name="soul_idle">Nothing yet</string>
     <string name="soul_idle_long">%1$s hasn\'t been on a shift yet. Run a timer and they might be.</string>
     <string name="on_shift">On shift: %1$s</string>

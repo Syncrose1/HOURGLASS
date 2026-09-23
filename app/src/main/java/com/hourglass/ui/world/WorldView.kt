@@ -39,7 +39,9 @@ fun WorldView(
     mineral: Color,
     running: Boolean,
     timerProgress: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 0 in full colour, 1 greyed out: a finished timer's world, kept as a record. */
+    greyed: Float = 0f
 ) {
     val world = session.world
     val progress by rememberUpdatedState(timerProgress)
@@ -53,12 +55,16 @@ fun WorldView(
     val cells = remember(world) { IntArray(world.width * world.height) }
     val pixels = remember(world) { IntArray(world.width * world.height) }
     val palette = remember(mineral, world.kind) { Palettes.forKind(world.kind, mineral.toArgb()) }
-    val shaded = remember(palette, world) { Palettes.shadedByDepth(palette, world.height) }
+    val shaded = remember(palette, world, greyed) {
+        Palettes.shadedByDepth(palette, world.height).let { table ->
+            if (greyed <= 0f) table else IntArray(table.size) { Palettes.greyed(table[it], greyed) }
+        }
+    }
 
     // The same sky as the bar at the top of the wall, at the same hour.
     val spent = LocalDaySpent.current
-    val skyTop = Color(DaySky.topAt(spent))
-    val skyBottom = Color(DaySky.bottomAt(spent))
+    val skyTop = Color(Palettes.greyed(DaySky.topAt(spent), greyed))
+    val skyBottom = Color(Palettes.greyed(DaySky.bottomAt(spent), greyed))
 
     LaunchedEffect(session, running) {
         if (!running) {

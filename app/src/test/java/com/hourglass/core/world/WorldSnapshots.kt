@@ -108,6 +108,12 @@ class WorldSnapshots {
             buffer, 72, 96, File(dir, "readme-mine.png"), Palettes.shadedByDepth(palette, 96),
             palette.sky, palette.colours.size, DaySky.topAt(0.62f), DaySky.bottomAt(0.62f)
         )
+        // The same mine as a finished timer shows it on the wall.
+        val grey = Palettes.shadedByDepth(palette, 96).map { Palettes.greyed(it, 1f) }.toIntArray()
+        write(
+            buffer, 72, 96, File(dir, "readme-mine-done.png"), grey, palette.sky, palette.colours.size,
+            Palettes.greyed(DaySky.topAt(0.62f), 1f), Palettes.greyed(DaySky.bottomAt(0.62f), 1f)
+        )
     }
 
     @Test

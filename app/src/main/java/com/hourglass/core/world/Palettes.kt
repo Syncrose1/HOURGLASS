@@ -306,6 +306,20 @@ object Palettes {
     }
 
     /**
+     * [argb] with its colour drained by [amount] (0..1) and dimmed a touch, keeping its
+     * lightness — so a greyed world still reads, like a photograph of it.
+     */
+    fun greyed(argb: Int, amount: Float): Int {
+        if (amount <= 0f) return argb
+        val r = (argb ushr 16) and 0xFF
+        val g = (argb ushr 8) and 0xFF
+        val b = argb and 0xFF
+        val luma = ((0.299f * r + 0.587f * g + 0.114f * b) * GREY_DIM).toInt().coerceIn(0, 255)
+        val grey = (argb and 0xFF000000.toInt()) or (luma shl 16) or (luma shl 8) or luma
+        return mix(argb, grey, amount)
+    }
+
+    /**
      * One palette per row, darkening toward the bottom so the ground reads as depth.
      * Bright slots are exempt: they are what you look for.
      */
@@ -323,6 +337,7 @@ object Palettes {
     }
 
     const val DEPTH_DARKENING = 0.4f
+    private const val GREY_DIM = 0.85f
     private const val TRANSPARENT = 0x00000000
     private const val WHITE = 0xFFFFFFFF.toInt()
     private const val BLACK = 0xFF000000.toInt()
