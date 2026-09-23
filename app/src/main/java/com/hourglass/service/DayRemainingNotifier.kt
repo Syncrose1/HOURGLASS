@@ -78,6 +78,8 @@ class DayRemainingNotifier @Inject constructor(
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            // Its own group, so the system does not bundle it with a running timer's.
+            .setGroup("hourglass.day")
             .build()
 
         // Checked inline rather than behind a helper: declining the permission should

@@ -90,10 +90,9 @@ class TimerController @Inject constructor(
                 announcedCompletion = stored.elapsedAt(System.currentTimeMillis()) >=
                     stored.totalDurationMillis
                 publish(stored, definition.name, definition.sand)
-                if (stored.isRunning) {
-                    startTicking()
-                    startService()
-                }
+                if (stored.isRunning) startTicking()
+                // Paused timers keep their notification too, with Resume and Stop.
+                startService()
             }
         }
     }

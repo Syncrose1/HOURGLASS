@@ -16,8 +16,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -52,6 +54,27 @@ class TimerService : Service() {
         // The platform gives a startForegroundService only a few seconds to promote
         // itself, so post before doing anything that could take a turn of the loop.
         render(controller.state.value)
+        if (!foregrounded && controller.state.value == null && intent?.action != ACTION_STOP) {
+            // Restarted by the system after the process was killed, with nothing in
+            // memory yet: promote with a placeholder, bring the timer back from its
+            // journal, and carry on showing it — or bow out if there is none.
+            startForeground(NotificationHelper.NOTIFICATION_ID, NotificationHelper.buildIdle(this))
+            foregrounded = true
+            controller.restore()
+            scope.launch {
+                val restored = withTimeoutOrNull(RESTORE_TIMEOUT_MILLIS) {
+                    controller.state.first { it != null }
+                }
+                if (restored == null) {
+                    stopForegroundAndSelf()
+                } else {
+                    render(restored)
+                    observeTimer()
+                    observeCompletions()
+                }
+            }
+            return START_STICKY
+        }
         if (!foregrounded) {
             // Nothing to show — promote with a placeholder purely to satisfy the
             // contract, then shut down cleanly on the next line.
@@ -68,7 +91,9 @@ class TimerService : Service() {
 
         observeTimer()
         observeCompletions()
-        return START_NOT_STICKY
+        // Sticky, so a timer outlives the process being killed: the system restarts
+        // the service and the notification comes back.
+        return START_STICKY
     }
 
     private var observing = false
@@ -176,5 +201,8 @@ class TimerService : Service() {
         const val ACTION_SHOW = "com.hourglass.action.SHOW_TIMER"
         const val ACTION_TOGGLE = "com.hourglass.action.TOGGLE_TIMER"
         const val ACTION_STOP = "com.hourglass.action.STOP_TIMER"
+
+        /** How long a restarted service waits for the journal before giving up. */
+        private const val RESTORE_TIMEOUT_MILLIS = 3_000L
     }
 }

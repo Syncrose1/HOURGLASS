@@ -16,8 +16,17 @@ import com.hourglass.core.TimeFormat
 
 /** Builds the ongoing timer notification and its channel. */
 object NotificationHelper {
-    /** The quiet, ongoing "a timer is running" notification. */
-    const val CHANNEL_ID = "hourglass_timers"
+    /**
+     * The ongoing "a timer is running" notification: silent, but properly visible,
+     * with an icon in the status bar. It replaces "hourglass_timers", whose low
+     * importance filed it away in the collapsed silent section — and a channel's
+     * importance cannot be raised once it exists, so it takes a new id.
+     */
+    const val CHANNEL_ID = "hourglass_running"
+    private const val RETIRED_CHANNEL_ID = "hourglass_timers"
+
+    /** Keeps the timer out of the bundle the system would otherwise make with the day's notice. */
+    private const val GROUP = "hourglass.timer"
 
     /** The one-shot "time is up" alert. Separate channel so it can be silenced alone. */
     const val CHANNEL_DONE_ID = "hourglass_complete"
@@ -29,15 +38,18 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService<NotificationManager>() ?: return
 
+        manager.deleteNotificationChannel(RETIRED_CHANNEL_ID)
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
                 context.getString(R.string.channel_timers_name),
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = context.getString(R.string.channel_timers_description)
                 setShowBadge(false)
                 enableVibration(false)
+                // Visible, not noisy: it is updated constantly and must never chime.
+                setSound(null, null)
             }
         )
 
@@ -91,7 +103,7 @@ object NotificationHelper {
 
         val toggleLabel = if (timer.isRunning) R.string.pause else R.string.resume
 
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(timer.name)
             .setContentText(status)
             .setSubText(context.getString(R.string.app_name))
@@ -99,10 +111,25 @@ object NotificationHelper {
             .setContentIntent(contentIntent(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setShowWhen(false)
             .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setGroup(GROUP)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+            .setProgress(PROGRESS_STEPS, (timer.progress.coerceIn(0f, 1f) * PROGRESS_STEPS).toInt(), false)
+
+        if (timer.isRunning) {
+            // A live clock in the header, ticking by itself between updates: down to
+            // the end of the allocation, then up through the overtime.
+            val end = System.currentTimeMillis() + timer.remainingMillis
+            builder.setShowWhen(true)
+                .setWhen(end)
+                .setUsesChronometer(true)
+                .setChronometerCountDown(!timer.isOvertime)
+        } else {
+            builder.setShowWhen(false)
+        }
+
+        return builder
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(0, context.getString(toggleLabel), serviceIntent(context, TimerService.ACTION_TOGGLE))
             .addAction(0, context.getString(R.string.stop), serviceIntent(context, TimerService.ACTION_STOP))
@@ -121,6 +148,8 @@ object NotificationHelper {
             .setSilent(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
+
+    private const val PROGRESS_STEPS = 1000
 
     private fun contentIntent(context: Context): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
