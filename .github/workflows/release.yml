@@ -32,12 +32,17 @@ jobs:
       # There is no release signing key yet, so the installable build is the
       # debug-signed one. It installs alongside a release build (".debug" id).
       - name: Name the APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk "hourglass-${GITHUB_REF_NAME}.apk"
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "hourglass-${GITHUB_REF_NAME}.apk"
+          ls -la "hourglass-${GITHUB_REF_NAME}.apk"
 
+      # Create (unless a rerun finds it already there), then upload separately and
+      # check it landed: a release with no APK on it is not a release.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "hourglass-${GITHUB_REF_NAME}.apk" \
-            --title "HOURGLASS $GITHUB_REF_NAME" \
-            --generate-notes
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "HOURGLASS $GITHUB_REF_NAME" --generate-notes --verify-tag
+          gh release upload "$GITHUB_REF_NAME" "hourglass-${GITHUB_REF_NAME}.apk" --clobber
+          gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | grep -q "hourglass-${GITHUB_REF_NAME}.apk"
