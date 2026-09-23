@@ -485,6 +485,7 @@ private fun WorldPill(
                     WorldKind.ISLAND -> R.string.world_island
                     WorldKind.FOREST -> R.string.world_forest
                     WorldKind.BATTLE -> R.string.world_battle
+                    WorldKind.HARBOUR -> R.string.world_harbour
                 }
             ),
             style = MaterialTheme.typography.labelLarge,

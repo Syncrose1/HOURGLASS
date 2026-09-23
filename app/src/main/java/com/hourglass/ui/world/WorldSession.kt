@@ -4,6 +4,7 @@ import com.hourglass.core.TimerRef
 import com.hourglass.core.world.AntWorld
 import com.hourglass.core.world.BattleWorld
 import com.hourglass.core.world.ForestWorld
+import com.hourglass.core.world.HarbourWorld
 import com.hourglass.core.world.IslandWorld
 import com.hourglass.core.world.MineWorld
 import com.hourglass.core.world.RiverWorld
@@ -103,6 +104,7 @@ object WorldRegistry {
             WorldKind.ISLAND -> IslandWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, IslandWorld.quotaFor(minutes))
             WorldKind.FOREST -> ForestWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, ForestWorld.quotaFor(minutes))
             WorldKind.BATTLE -> BattleWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, BattleWorld.pointsFor(minutes))
+            WorldKind.HARBOUR -> HarbourWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, HarbourWorld.quotaFor(minutes))
         }
         return WorldSession(world)
     }

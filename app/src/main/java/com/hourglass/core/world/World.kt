@@ -21,7 +21,10 @@ enum class WorldKind {
     FOREST,
 
     /** Two armies contest a valley, flag by flag. */
-    BATTLE;
+    BATTLE,
+
+    /** Ships come and go at a quay; a crane and dockers fill the warehouse. */
+    HARBOUR;
 
     /** The value persisted with a timer. */
     val token: String get() = name.lowercase()

@@ -71,6 +71,12 @@ class WorldSnapshots {
     }
 
     @Test
+    fun harbour() {
+        val dir = outputDir()
+        listOf(3L, 11L).forEach { seed -> render(HarbourWorld(72, 96, seed, HarbourWorld.quotaFor(5f)), "harbour-$seed", dir) }
+    }
+
+    @Test
     fun sky() {
         val dir = outputDir()
         val sky = DaySky(96, 14)

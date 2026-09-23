@@ -26,7 +26,50 @@ object Palettes {
         WorldKind.ISLAND -> island(accent)
         WorldKind.FOREST -> forest(accent)
         WorldKind.BATTLE -> battle(accent)
+        WorldKind.HARBOUR -> harbour(accent)
     }
+
+    /** A stone quay on grey-green water. The crates are the timer's colour. */
+    private fun harbour(accent: Int) = WorldPalette(
+        colours = IntArray(HarbourMat.COUNT).also {
+            it[HarbourMat.SKY] = TRANSPARENT
+            it[HarbourMat.WATER] = 0xFF3F7288.toInt()
+            it[HarbourMat.WATER_DEEP] = 0xFF2D5568.toInt()
+            it[HarbourMat.FOAM] = 0xFFD7E6EA.toInt()
+            it[HarbourMat.SEABED] = 0xFF6B5E47.toInt()
+            it[HarbourMat.STONE] = 0xFF9C958A.toInt()
+            it[HarbourMat.STONE_DARK] = 0xFF7E776D.toInt()
+            it[HarbourMat.BOLLARD] = 0xFF2E2A28.toInt()
+            it[HarbourMat.HULL] = 0xFF6E4A2F.toInt()
+            it[HarbourMat.HULL_DARK] = 0xFF4E3321.toInt()
+            it[HarbourMat.DECK] = 0xFFB08A5C.toInt()
+            it[HarbourMat.MAST] = 0xFF5A3E28.toInt()
+            it[HarbourMat.SAIL] = 0xFFEDE4CF.toInt()
+            it[HarbourMat.ROPE] = 0xFF3A322B.toInt()
+            it[HarbourMat.CRANE] = 0xFF5B4632.toInt()
+            it[HarbourMat.CRANE_DARK] = 0xFF3F3023.toInt()
+            it[HarbourMat.CRATE] = accent
+            it[HarbourMat.CRATE_DARK] = mix(accent, BLACK, 0.3f)
+            it[HarbourMat.BARREL] = 0xFF8A5A33.toInt()
+            it[HarbourMat.SACK] = 0xFFD8C79E.toInt()
+            it[HarbourMat.WALL] = 0xFFA2573E.toInt()
+            it[HarbourMat.WALL_DARK] = 0xFF7F4130.toInt()
+            it[HarbourMat.ROOF] = 0xFF4D3B35.toInt()
+            it[HarbourMat.INTERIOR] = 0xFF2B211C.toInt()
+            it[HarbourMat.SKIN] = 0xFFF1C9A0.toInt()
+            it[HarbourMat.SHIRT] = 0xFF3F5E86.toInt()
+            it[HarbourMat.TROUSERS] = 0xFF2F2A26.toInt()
+            it[HarbourMat.GULL] = 0xFFF4F4F0.toInt()
+            it[HarbourMat.RAIN] = 0xFFAFC4CF.toInt()
+            it[HarbourMat.LAMP] = 0xFFFFD27A.toInt()
+        },
+        bright = setOf(
+            HarbourMat.SKY, HarbourMat.CRATE, HarbourMat.SAIL, HarbourMat.GULL,
+            HarbourMat.FOAM, HarbourMat.LAMP, HarbourMat.SKIN, HarbourMat.RAIN
+        ),
+        sky = HarbourMat.SKY,
+        depthShading = 0.25f
+    )
 
     /**
      * A valley in summer, from above. Your side wears the timer's colour; theirs is a
