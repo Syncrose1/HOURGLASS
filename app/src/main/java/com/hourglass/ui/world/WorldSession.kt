@@ -8,6 +8,7 @@ import com.hourglass.core.world.HarbourWorld
 import com.hourglass.core.world.IslandWorld
 import com.hourglass.core.world.MineWorld
 import com.hourglass.core.world.RiverWorld
+import com.hourglass.core.world.SiegeWorld
 import com.hourglass.core.world.World
 import com.hourglass.core.world.WorldKind
 import com.hourglass.core.world.WorldPacer
@@ -105,6 +106,7 @@ object WorldRegistry {
             WorldKind.FOREST -> ForestWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, ForestWorld.quotaFor(minutes))
             WorldKind.BATTLE -> BattleWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, BattleWorld.pointsFor(minutes))
             WorldKind.HARBOUR -> HarbourWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, HarbourWorld.quotaFor(minutes))
+            WorldKind.SIEGE -> SiegeWorld(WORLD_WIDTH, WORLD_HEIGHT, seed, SiegeWorld.quotaFor(minutes))
         }
         return WorldSession(world)
     }

@@ -77,6 +77,22 @@ class WorldSnapshots {
     }
 
     @Test
+    fun siege() {
+        val dir = outputDir()
+        listOf(3L, 11L).forEach { seed -> render(SiegeWorld(72, 96, seed, SiegeWorld.quotaFor(5f)), "siege-$seed", dir) }
+        // And a long campaign, fast-forwarded: what a whole evening builds.
+        val long = SiegeWorld(72, 96, 5L, SiegeWorld.quotaFor(60f))
+        val pacer = long.newPacer()
+        val random = Random(5)
+        val ticks = 60 * 1800
+        repeat(ticks) { long.step(pacer.effortFor((it + 1f) / ticks, long.objectiveProgress), random) }
+        val palette = Palettes.forKind(long.kind, AMBER)
+        val buffer = IntArray(72 * 96)
+        long.renderInto(buffer)
+        write(buffer, 72, 96, File(dir, "siege-long.png"), Palettes.shadedByDepth(palette, 96), palette.sky, palette.colours.size)
+    }
+
+    @Test
     fun sky() {
         val dir = outputDir()
         val sky = DaySky(96, 14)

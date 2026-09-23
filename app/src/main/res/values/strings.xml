@@ -68,6 +68,7 @@
     <string name="world_forest">Forest</string>
     <string name="world_battle">Battle</string>
     <string name="world_harbour">Harbour</string>
+    <string name="world_siege">Siege</string>
 
     <!-- Focus -->
     <string name="tap_to_pause">Tap anywhere to pause</string>

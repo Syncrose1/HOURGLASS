@@ -27,7 +27,40 @@ object Palettes {
         WorldKind.FOREST -> forest(accent)
         WorldKind.BATTLE -> battle(accent)
         WorldKind.HARBOUR -> harbour(accent)
+        WorldKind.SIEGE -> siege(accent)
     }
+
+    /** Pale limestone under open sky. Your people and your banner wear the timer's colour. */
+    private fun siege(accent: Int) = WorldPalette(
+        colours = IntArray(SiegeMat.COUNT).also {
+            it[SiegeMat.SKY] = TRANSPARENT
+            it[SiegeMat.GRASS] = 0xFF6E8F3E.toInt()
+            it[SiegeMat.DIRT] = 0xFF6B4E33.toInt()
+            it[SiegeMat.DIRT_DARK] = 0xFF5B412A.toInt()
+            it[SiegeMat.STONE] = 0xFFCBBFA6.toInt()
+            it[SiegeMat.STONE_DARK] = 0xFFAA9D84.toInt()
+            it[SiegeMat.BLOCK] = 0xFFDCD2BC.toInt()
+            it[SiegeMat.SCAFFOLD] = 0xFF8A6A48.toInt()
+            it[SiegeMat.ROCK] = 0xFF9B9282.toInt()
+            it[SiegeMat.ROCK_DARK] = 0xFF7F776A.toInt()
+            it[SiegeMat.RUBBLE] = 0xFFB3A78F.toInt()
+            it[SiegeMat.TIMBER] = 0xFF7A5436.toInt()
+            it[SiegeMat.TIMBER_DARK] = 0xFF5C3E27.toInt()
+            it[SiegeMat.WEIGHT] = 0xFF3F3A36.toInt()
+            it[SiegeMat.ROPE] = 0xFF3A322B.toInt()
+            it[SiegeMat.SHOT] = 0xFF4A4540.toInt()
+            it[SiegeMat.SKIN] = 0xFFF1C9A0.toInt()
+            it[SiegeMat.OURS] = accent
+            it[SiegeMat.THEIRS] = 0xFF3D4A66.toInt()
+            it[SiegeMat.TROUSERS] = 0xFF2F2A26.toInt()
+            it[SiegeMat.BANNER] = accent
+            it[SiegeMat.ARROW] = 0xFF2B2320.toInt()
+            it[SiegeMat.DUST] = 0xFFD9CDB4.toInt()
+        },
+        bright = setOf(SiegeMat.SKY, SiegeMat.OURS, SiegeMat.BANNER, SiegeMat.SKIN, SiegeMat.DUST),
+        sky = SiegeMat.SKY,
+        depthShading = 0.15f
+    )
 
     /** A stone quay on grey-green water. The crates are the timer's colour. */
     private fun harbour(accent: Int) = WorldPalette(
