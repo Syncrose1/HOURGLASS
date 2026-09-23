@@ -61,6 +61,7 @@ object Palettes {
             it[BattleMat.TRACER] = 0xFFFFF1B8.toInt()
             it[BattleMat.SHELL] = 0xFF1E1B1A.toInt()
             it[BattleMat.BLAST] = 0xFFFFB347.toInt()
+            it[BattleMat.SHADOW] = 0xFF3E4A2A.toInt()
         },
         bright = setOf(BattleMat.TRACER, BattleMat.BLAST, BattleMat.OURS, BattleMat.THEIRS),
         sky = -1,

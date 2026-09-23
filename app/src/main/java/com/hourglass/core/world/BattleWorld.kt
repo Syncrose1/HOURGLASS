@@ -40,7 +40,8 @@ object BattleMat {
     const val TRACER = 25
     const val SHELL = 26
     const val BLAST = 27
-    const val COUNT = 28
+    const val SHADOW = 28
+    const val COUNT = 29
 
     fun isForest(cell: Int) = cell == FOREST || cell == FOREST_DARK
     fun isHill(cell: Int) = cell == HILL || cell == HILL_DARK
@@ -728,7 +729,12 @@ class BattleWorld(
                 unit.routed -> BattleMat.THEIRS_ROUTED
                 else -> BattleMat.THEIRS
             }
-            plot(unit.x.toInt(), unit.y.toInt(), mat)
+            // A shadow under each soldier: a lone pixel vanishes on a phone, a figure
+            // with a foot on the ground reads.
+            val x = unit.x.toInt()
+            val y = unit.y.toInt()
+            if (y + 1 < height && buffer[(y + 1) * width + x] < BattleMat.OURS) plot(x, y + 1, BattleMat.SHADOW)
+            plot(x, y, mat)
         }
         shells.forEach { shell ->
             val x = shell.x0 + (shell.x1 - shell.x0) * shell.t
