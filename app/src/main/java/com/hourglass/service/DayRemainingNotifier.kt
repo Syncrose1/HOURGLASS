@@ -15,7 +15,10 @@ import androidx.core.content.getSystemService
 import com.hourglass.MainActivity
 import com.hourglass.R
 import com.hourglass.core.Bedtime
+import com.hourglass.core.DayLines
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,7 +50,11 @@ class DayRemainingNotifier @Inject constructor(
     }
 
     fun showRemaining(minutesUntilBedtime: Int) {
-        post(Bedtime.describeDayRemaining(minutesUntilBedtime))
+        // The figure, then a word of encouragement for this part of the day.
+        val now = Calendar.getInstance()
+        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val epochDay = TimeUnit.MILLISECONDS.toDays(now.timeInMillis + now.get(Calendar.ZONE_OFFSET) + now.get(Calendar.DST_OFFSET))
+        post(Bedtime.describeDayRemaining(minutesUntilBedtime), DayLines.lineFor(minuteOfDay, epochDay))
     }
 
     fun showDayOver() {
@@ -58,7 +65,7 @@ class DayRemainingNotifier @Inject constructor(
         runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
     }
 
-    private fun post(text: String) {
+    private fun post(text: String, line: String? = null) {
         val intent = Intent(context, MainActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pending = PendingIntent.getActivity(
@@ -70,6 +77,13 @@ class DayRemainingNotifier @Inject constructor(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(text)
+            .apply {
+                if (line != null) {
+                    setContentText(line)
+                    // Room for the whole line when the notification is expanded.
+                    setStyle(NotificationCompat.BigTextStyle().bigText(line))
+                }
+            }
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
             .setOngoing(true)

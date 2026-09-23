@@ -92,6 +92,24 @@ class WorldSnapshots {
         write(buffer, 72, 96, File(dir, "siege-long.png"), Palettes.shadedByDepth(palette, 96), palette.sky, palette.colours.size)
     }
 
+    /** The mine in the README: twelve minutes into a twenty-minute timer, in golden light. */
+    @Test
+    fun readme() {
+        val dir = outputDir()
+        val world = MineWorld(72, 96, 21L, MineWorld.richnessFor(20f))
+        val pacer = world.newPacer()
+        val random = Random(8)
+        val total = 20 * 60 * 30
+        repeat(total * 3 / 5) { world.step(pacer.effortFor((it + 1f) / total, world.objectiveProgress), random) }
+        val palette = Palettes.forKind(world.kind, AMBER)
+        val buffer = IntArray(72 * 96)
+        world.renderInto(buffer)
+        write(
+            buffer, 72, 96, File(dir, "readme-mine.png"), Palettes.shadedByDepth(palette, 96),
+            palette.sky, palette.colours.size, DaySky.topAt(0.62f), DaySky.bottomAt(0.62f)
+        )
+    }
+
     @Test
     fun sky() {
         val dir = outputDir()
@@ -136,14 +154,16 @@ class WorldSnapshots {
         file: File,
         shaded: IntArray,
         skySlot: Int,
-        slots: Int
+        slots: Int,
+        skyTop: Int = 0xFF3B3E6E.toInt(),
+        skyBottom: Int = 0xFFE7C58F.toInt()
     ) {
         val scale = 6
         val w = width * scale
         val h = height * scale
         val pixels = IntArray(w * h)
         for (y in 0 until height) {
-            val sky = lerpArgb(0xFF3B3E6E.toInt(), 0xFFE7C58F.toInt(), y / (height * 0.25f))
+            val sky = lerpArgb(skyTop, skyBottom, y / (height * 0.25f))
             for (x in 0 until width) {
                 val slot = cells[y * width + x]
                 val argb = if (slot == skySlot) sky else shaded[y * slots + slot]

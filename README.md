@@ -1,116 +1,116 @@
-# HOURGLASS ⏳
+# HOURGLASS
 
 [![CI](https://github.com/Syncrose1/HOURGLASS/actions/workflows/ci.yml/badge.svg)](https://github.com/Syncrose1/HOURGLASS/actions/workflows/ci.yml)
+[![Release](https://github.com/Syncrose1/HOURGLASS/actions/workflows/release.yml/badge.svg)](https://github.com/Syncrose1/HOURGLASS/releases/latest)
 
-A lightweight, on-device productivity timer with a sand aesthetic. Bank your time,
-respect your rest.
+An on-device productivity timer where every timer is a little world at work. Give a
+task twenty minutes and a mining crew sinks shafts for twenty minutes; stay focused and
+they get the job done.
 
-## Features
+<p align="center">
+  <img src="docs/images/mine.png" width="360" alt="A mine twelve minutes into a twenty-minute timer: a headframe and stockpile under a sunset sky, tunnels worked through layered sand and sandstone around dark bedrock boulders, and bright mineral seams still waiting in the rock below.">
+</p>
 
-### 🧱 One wall, no scrolling
-Every timer is a tile on a single screen. Add more and the tiles get smaller — they
-never spill into a list you have to scroll. That is the point rather than a limit: a
-wall that visibly gets denser is its own argument for having fewer timers, which a
-scrolling list never makes.
+## Worlds, not progress bars
 
-### 👆 One gesture
-Tap a tile and that timer takes the whole screen and starts running. Tap again and it
-pauses and hands you back the wall. There are no buttons on a tile and nothing to
-adjust while a timer runs — if you want to change something, stop the timer first.
-Long-press a tile to edit it, which you can only do from the wall, which means only
-when nothing is running.
+Each timer runs a genuine simulation, not an animation. Nothing is scripted: where the
+tunnels go, which tree falls first, whether the castle wall holds — all of it falls out
+of the rules, and no two runs are alike. The only thing tied to the clock is how hard
+the inhabitants work. A pacer watches progress and nudges effort so that each world
+lands at about 85% of its job when the timer runs out, which leaves overtime something
+to buy.
 
-### 🏖️ Real falling sand
-The glass is a cellular automaton, not an animation. Grains fall, pile, slump and find
-their angle of repose from one rule applied to every cell. Tilt the phone and the sand
-falls the way you tilt it; drag a finger through a pile and it collapses. The drain is
-metered by the timer, so what you are watching is the elapsed time itself.
+The crews are deliberately imperfect. Miners cannot see ore until they tunnel close to
+it, give up on drifts that turn up nothing, and have to work round bedrock they cannot
+dig. Workers take breaks, and when a world is ahead of the clock the crew sits down for
+a while rather than moving in slow motion.
 
-### ⏳ Quicksand
-Lightweight timers for whatever comes up. Same machinery, deliberately smaller and
-quieter so they never compete with the day's real work.
+| World | What happens |
+|---|---|
+| **Mine** | Miners prospect through sand, sandstone and rock, hauling mineral to the cart. Sand slumps into their tunnels; rock does not. |
+| **River** | Beavers pull apart a logjam, and the lake behind it drains down the valley. |
+| **Colony** | Ants forage from above, laying scent trails that strengthen while a food source pays and fade when it runs out. |
+| **Island** | An undersea volcano builds a cone out of the sea, quenching in steam, until it breaks the surface and grass takes hold. |
+| **Forest** | A lumber crew fells trees, clears the drop zone before each one comes down, strips and saws the trunks, and carries the lengths in pairs. |
+| **Battle** | Two armies contest a valley. Commanders send squads to assault and flank; outnumbered squads fall back; the routed regroup and return. |
+| **Harbour** | Ships come and go at a quay. A crane unloads them, dockers fill the warehouse, and now and then a load slips into the water. |
+| **Siege** | Masons raise a castle course by course while a trebuchet knocks pieces out of it, and they patch the holes. |
 
-### ⏱️ Overtime
-Running past an allocation is a feature, not an error. The remaining time goes negative
-and is shown as `+MM:SS`, the sand turns, and the overrun is recorded against the task.
+## The ten souls
 
-### 🌙 Bedtime countdown
-Set a bedtime and a wake time. The home screen leads with a dusk-gradient card counting
-down in plain language, deepening in tone and lighting its ring through the last two
-hours before bed. Settings projects the resulting night's sleep and flags a short one.
+Every world's crew is cast from the same ten people: Jeb, Mira, Otto, Wren, Bram,
+Tilly, Ezra, Nell, Iggy and Pip. Whatever they do is credited to their name under the
+role they played — Jeb the Beaver's logs broken, Otto the Crane driver's loads craned
+ashore, Tilly the Mason's holes patched — and kept for good on the Souls screen. Each
+has a temperament: some work quickly, some carefully, and a careful crane driver really
+does drop fewer loads.
 
-### 🏜️ The desert
-Forest grows a wood; this pours a dune. Every finished session becomes a visible band
-of sand in the colour of the timer that earned it, oldest at the base, so the pile is
-a cross-section of how your time was actually spent rather than a score. It grows on a
-log scale — the first hour reads as real progress and the five-hundredth still adds
-something — and landmarks appear on the slope at thresholds you cross. The only way to
-add to it is to run a timer through to the end.
+## The rest of the app
 
-### 🔔 Time's up
-A timer that reaches its allocation says so — a one-shot alert on its own notification
-channel, plus a haptic if the app is open. It does not stop anything: the timer keeps
-running into overtime, because you chose the allocation, you did not agree to be cut
-off at it.
+**One wall, no scrolling.** Every timer is a tile on one screen, sized by how much time
+it is given, like a treemap. Add more and the tiles get smaller rather than spilling into
+a list — a wall that visibly gets denser is its own argument for having fewer timers.
 
-### 🌙 Your day ends in 2 hours 15 minutes
-A standing notification says how much of your day is left, in plain words, floored to
-the quarter hour. The rounding is the feature: "2 hours 13 minutes" sliding to "2 hours
-7 minutes" is not a feeling, but "2 hours 15 minutes" holding still and then dropping
-to "2 hours" is a loss you notice. Flooring rather than rounding to nearest means the
-figure is a promise the clock can keep — you always have at least what it says.
+**One gesture.** Tap a tile and its world fills the screen and the timer starts. Tap again
+and it pauses and hands back the wall. Long-press a tile to edit it.
 
-### 🔔 Ongoing notification
-A running timer holds a foreground-service notification with the task name, the time
-left, and pause/resume and stop actions. Timers survive the app being backgrounded,
-swapped out or the device rebooting — the run is journalled and restored on next launch.
+**The day as a sky.** A strip of pixel sky across the top of the wall shows how much of
+the day is left: the sun crosses it and sets into the dunes as bedtime comes, and the
+stars come out when the day is over. Every world's sky follows the same clock.
 
-## Design
+**Your day ends in 2 hours 15 minutes.** A standing notification says how much of the
+day is left, floored to the quarter hour so it steps rather than ticks, with a line of
+encouragement for the morning, afternoon or evening underneath.
 
-- **One palette.** A single warm neutral ramp carries every surface, border and label;
-  accents only ever appear as sand, glow or state. Material You dynamic colour is
-  deliberately *not* used — the sand palette is the point.
-- **The eight sands are computed, not eyeballed.** Each one is a token that resolves to
-  a different step in light and dark — steps chosen for that surface, never flipped
-  from the other. Both sets were run through a colour-vision validator: adjacent
-  swatches clear ΔE 15 for normal vision and ΔE 15 under protanopia, deuteranopia and
-  tritanopia. Colour never carries identity alone regardless — every card and every
-  chart row is labelled.
-- **Two voices.** Numbers are thin and wide open; labels are small, bold and
-  letter-spaced.
-- **Motion means something.** A running card is the only thing on screen that moves:
-  it lifts, takes the timer's own colour and gets a slow shimmer around its edge.
-- **Full dark theme.** Every colour is a semantic token resolved per theme, so nothing
-  is hard-coded to a light background.
+**Overtime.** Running past an allocation is a feature, not an error. The clock goes
+positive as `+MM:SS`, the world keeps working toward the rest of its job, and the overrun
+is recorded against the task. A timer that reaches its allocation says so once, and
+stops nothing.
 
-`ui/preview/ComponentPreviews.kt` renders the wall at three densities, the dune day and
-night, and every sand in both themes, if you want to look before building.
+**Quicksand.** Lightweight timers for whatever comes up, deliberately quieter than the
+day's real work.
+
+**The desert.** Every finished session pours a band of sand in the timer's colour onto a
+dune, oldest at the base, so the pile is a cross-section of how the time was actually
+spent.
+
+**A timer that stays put.** A running timer holds an ongoing notification with a live
+countdown, pause and stop. The run is journalled, so it survives the app being closed,
+killed or the phone restarting.
 
 ## Architecture
 
 | Layer | What lives there |
 |---|---|
-| `core/` | Pure Kotlin: the sand automaton, the sandglass, duration formatting, bedtime arithmetic, the timer state machine, tiling maths, the desert. No Android imports, 92 unit tests. |
-| `data/` | Room entities, DAOs, and `HourglassRepository` — the single door onto storage. |
-| `timer/` | `TimerController`, a process singleton that owns the one running timer, ticks it, and journals it. |
-| `service/` | `TimerService`, a renderer for the controller's state as an ongoing notification. |
+| `core/` | Pure Kotlin with no Android imports: the timer state machine, bedtime arithmetic, treemap layout, the desert, and in `core/world/` every simulation, the crew engine, the pacer, palettes, the souls and the day sky. |
+| `data/` | Room entities, DAOs, `HourglassRepository`, and the souls' ledger. |
+| `timer/` | `TimerController`, a process singleton that owns the one running timer, ticks it and journals it. |
+| `service/` | `TimerService` and the day notification: renderers for state as notifications. |
 | `viewmodel/` | Screen state, assembled from the repository and the controller. |
-| `ui/` | Theme tokens, the sand renderer, tiles, screens, navigation. |
+| `ui/` | Theme tokens, the world renderer, tiles, screens and navigation. |
 
-Kotlin + Jetpack Compose, MVVM, Hilt for injection, Room for persistence.
+Kotlin, Jetpack Compose, MVVM, Hilt and Room. The simulations are platform-free so they
+can be hosted elsewhere.
 
 ## Building
 
 ```bash
 ./gradlew assembleDebug        # build
-./gradlew testDebugUnitTest    # run the core unit tests
+./gradlew testDebugUnitTest    # unit tests, including every world's pacing
 ./gradlew lintDebug            # Android lint
 ```
 
 Requires JDK 17 and the Android SDK (compileSdk 34). Minimum device API is 26.
 
-CI runs all three on every pull request, so the build gate is the same one you get
-locally. Reports from a failing run are attached to it as artifacts.
+To see the worlds without a phone, render them to PNG:
+
+```bash
+WORLDSHOTS_DIR=/tmp/worldshots ./gradlew testDebugUnitTest --tests '*WorldSnapshots*'
+```
+
+CI runs build, tests and lint on every push to `main` and every pull request. Pushing a
+version tag (`git tag -a v1.2.3 -m "…" && git push origin v1.2.3`) runs the same checks
+and publishes a release with an installable APK attached.
 
 ## Privacy
 
